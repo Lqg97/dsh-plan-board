@@ -6,6 +6,14 @@
   "description": "Plan board for DSH: reads a workspace's doc/plans/ as a kanban, timeline and cadence view.",
   "license": "MIT",
   "author": "Lqg97",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lqg97/dsh-plan-board.git"
+  },
+  "homepage": "https://github.com/Lqg97/dsh-plan-board#readme",
+  "bugs": {
+    "url": "https://github.com/Lqg97/dsh-plan-board/issues"
+  },
   "keywords": [
     "dsh",
     "deepseek-harness",
