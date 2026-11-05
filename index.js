@@ -220,23 +220,43 @@ async function handleWorkspaces(ctx, req, res) {
     res.end();
     return;
   }
-  const { stat } = await import('node:fs/promises');
   const items = [];
   for (const workspace of ctx.workspaceRegistry.list()) {
-    const planDir = path.join(workspace.path, 'doc', 'plans');
-    try {
-      const info = await stat(planDir);
-      if (!info.isDirectory()) continue;
-    } catch {
-      continue;
-    }
+    const counts = await planCounts(workspace.path);
+    if (counts === undefined) continue;
     items.push({
       path: workspace.path,
       title: workspace.title ?? path.basename(workspace.path),
-      hasPlans: true,
+      ...counts,
     });
   }
+  // The boarded workspace first: a board with live plans is what the panel is
+  // for, and every other workspace would open onto an empty page. Registration
+  // order says nothing about which one the user works in.
+  items.sort((a, b) => b.live - a.live || b.archived - a.archived || a.title.localeCompare(b.title));
   sendJson(res, 200, items);
+}
+
+/**
+ * How many plan files a workspace holds.
+ * @param {string} workspace - absolute workspace directory.
+ * @returns {Promise<{ live: number, archived: number } | undefined>} counts, or
+ *   undefined when the workspace has no `doc/plans/` at all.
+ */
+async function planCounts(workspace) {
+  const { readdir } = await import('node:fs/promises');
+  const plansRoot = path.join(workspace, 'doc', 'plans');
+  const count = async (dir) => {
+    try {
+      const names = await readdir(dir);
+      return names.filter((name) => name.endsWith('.md')).length;
+    } catch {
+      return undefined;
+    }
+  };
+  const live = await count(plansRoot);
+  if (live === undefined) return undefined;
+  return { live, archived: (await count(path.join(plansRoot, 'done'))) ?? 0 };
 }
 
 /**

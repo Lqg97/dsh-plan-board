@@ -528,13 +528,18 @@ window.__ModuleLoader__.load({
 				.filter((card) => card.firstProgressDate !== null || card.headerStatusDate !== null)
 				.sort((a, b) => (a.archived === b.archived ? 0 : a.archived ? 1 : -1))
 				.slice(0, 60);
+			if (rows.length === 0) {
+				return h('div', { className: 'pb-loading' }, tr('empty.noPlans'));
+			}
 			const dates = rows.flatMap((card) => [card.firstProgressDate, card.lastProgressDate,
 				card.headerStatusDate, today]).filter(Boolean).sort();
 			const start = dates[0] ?? today;
 			const end = dates[dates.length - 1] ?? today;
 			const t0 = Date.parse(`${start}T00:00:00`);
 			const t1 = Date.parse(`${end}T00:00:00`);
-			const span = Math.max(t1 - t0, 86_400_000);
+			// A workspace with one plan would collapse the axis to a point; keep at
+			// least a two-week window so the bar and the "today" line stay readable.
+			const span = Math.max(t1 - t0, 14 * 86_400_000);
 			const pct = (date) => ((Date.parse(`${date}T00:00:00`) - t0) / span) * 100;
 
 			const ticks = [];
@@ -854,7 +859,14 @@ window.__ModuleLoader__.load({
 						const items = Array.isArray(list) ? list : [];
 						setWorkspaces(items);
 						setWorkspace((current) => {
-							if (current !== '' && items.some((item) => item.path === current)) return current;
+							const remembered = items.find((item) => item.path === current);
+							// A remembered workspace still wins, unless it has no plan
+							// files at all — an empty board is never what the user meant.
+							if (remembered !== undefined && (remembered.live > 0 || remembered.archived > 0)) {
+								return current;
+							}
+							// Otherwise open the workspace with the most live plans; the
+							// host already sorted them that way.
 							return items[0]?.path ?? '';
 						});
 					})
@@ -948,8 +960,14 @@ window.__ModuleLoader__.load({
 						key: 'ws',
 						className: 'pb-select',
 						value: workspace,
+						title: tr('subtitle'),
 						onChange: (event) => setWorkspace(event.target.value),
-					}, workspaces.map((item) => h('option', { key: item.path, value: item.path }, item.title ?? item.path)))
+					}, workspaces.map((item) => h('option', {
+						key: item.path,
+						value: item.path,
+						// Show the plan count so an empty board is explained by the
+						// picker itself instead of by a blank page.
+					}, `${item.title ?? item.path}（${item.live ?? 0}+${item.archived ?? 0}）`)))
 					: null,
 				h('div', { key: 'tabs', className: 'pb-tabs' }, [
 					h('button', { key: 'b', type: 'button', 'data-on': String(view === 'board'), onClick: () => setView('board') }, tr('view.board')),

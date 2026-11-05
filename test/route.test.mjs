@@ -101,19 +101,38 @@ test('all five routes register on apply', () => {
   ]);
 });
 
-test('workspace listing keeps only directories holding doc/plans', async () => {
+test('workspace listing reports plan counts and leads with the busiest board', async (t) => {
+  if (!fs.existsSync(path.join(WORKSPACE, 'doc/plans'))) {
+    t.skip(`no doc/plans under ${WORKSPACE}`);
+    return;
+  }
   const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-board-nows-'));
+  const archivedOnly = fs.mkdtempSync(path.join(os.tmpdir(), 'plan-board-doneonly-'));
   try {
-    const { ctx, routes } = makeContext([WORKSPACE, empty]);
+    fs.mkdirSync(path.join(archivedOnly, 'doc/plans/done'), { recursive: true });
+    fs.writeFileSync(path.join(archivedOnly, 'doc/plans/done/old.md'), '# old\n');
+    const { ctx, routes } = makeContext([empty, archivedOnly, WORKSPACE]);
     plugin.apply(ctx);
     const res = await call(routes.get('/plan-board/workspaces'), '/plan-board/workspaces');
     assert.equal(res.statusCode, 200);
+
+    // Only workspaces that carry doc/plans/ are offered; the rest would render empty.
     const paths = res.json.map((item) => item.path);
-    assert.ok(paths.includes(WORKSPACE));
     assert.ok(!paths.includes(empty));
-    assert.ok(res.json.every((item) => item.hasPlans === true));
+    assert.ok(paths.includes(WORKSPACE));
+    assert.ok(paths.includes(archivedOnly));
+
+    // Counts let the picker explain itself, and a board with live plans leads.
+    for (const item of res.json) {
+      assert.equal(typeof item.live, 'number', `live count for ${item.title}`);
+      assert.equal(typeof item.archived, 'number', `archived count for ${item.title}`);
+      assert.ok(!('hasPlans' in item), 'hasPlans is superseded by the counts');
+    }
+    assert.equal(res.json[0].path, WORKSPACE, 'busiest board first');
+    assert.ok(res.json[0].live >= res.json[res.json.length - 1].live);
   } finally {
     fs.rmSync(empty, { recursive: true, force: true });
+    fs.rmSync(archivedOnly, { recursive: true, force: true });
   }
 });
 
