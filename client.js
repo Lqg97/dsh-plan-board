@@ -20,8 +20,15 @@ window.__ModuleLoader__.load({
 		const NS = 'dsh-plan-board';
 		/** `main` panel key and `sidebar.panellist` id; the same string on purpose. */
 		const PANEL_ID = 'plan-board';
-		/** Where the chosen workspace is remembered between sessions. */
-		const STORE_KEY = 'dsh-plan-board.workspace';
+		/**
+		 * Where a workspace the user picked explicitly is remembered.
+		 *
+		 * `.v2` on purpose: `v1` was written by the first release, which also
+		 * persisted its auto-pick. That stale value pointed at a workspace with no
+		 * live plans, so the panel kept reopening onto a blank board. Auto-picks are
+		 * no longer stored; the new key simply ignores the old one.
+		 */
+		const STORE_KEY = 'dsh-plan-board.workspace.v2';
 
 		/** Column accent colours; the only literal colours in the file, used as dots. */
 		const STAGE_HUE = {
@@ -860,13 +867,11 @@ window.__ModuleLoader__.load({
 						setWorkspaces(items);
 						setWorkspace((current) => {
 							const remembered = items.find((item) => item.path === current);
-							// A remembered workspace still wins, unless it has no plan
-							// files at all — an empty board is never what the user meant.
-							if (remembered !== undefined && (remembered.live > 0 || remembered.archived > 0)) {
-								return current;
-							}
-							// Otherwise open the workspace with the most live plans; the
-							// host already sorted them that way.
+							// A remembered choice wins only while it still has plans being
+							// worked on; an all-archived workspace opens empty and reads as
+							// a broken panel rather than as "nothing in flight".
+							if (remembered !== undefined && remembered.live > 0) return current;
+							// Otherwise open the workspace with the most live plans.
 							return items[0]?.path ?? '';
 						});
 					})
@@ -880,11 +885,6 @@ window.__ModuleLoader__.load({
 
 			React.useEffect(() => {
 				if (workspace === '') return undefined;
-				try {
-					window.localStorage.setItem(STORE_KEY, workspace);
-				} catch {
-					// Private mode: the choice just does not persist.
-				}
 				let disposed = false;
 				setError(null);
 				fetchRoute('board', workspace)
@@ -961,7 +961,17 @@ window.__ModuleLoader__.load({
 						className: 'pb-select',
 						value: workspace,
 						title: tr('subtitle'),
-						onChange: (event) => setWorkspace(event.target.value),
+						onChange: (event) => {
+							const chosen = event.target.value;
+							// Only an explicit pick is remembered; an auto-pick must never
+							// outlive the reason it was chosen.
+							try {
+								window.localStorage.setItem(STORE_KEY, chosen);
+							} catch {
+								// Private mode: the choice just does not persist.
+							}
+							setWorkspace(chosen);
+						},
 					}, workspaces.map((item) => h('option', {
 						key: item.path,
 						value: item.path,
