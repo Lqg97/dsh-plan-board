@@ -1050,13 +1050,9 @@ window.__ModuleLoader__.load({
 			}, 'dsh-plan-board: styles');
 
 			const t = ctx.locale.bind(NS);
-			/** Set once `layout` arrives; the sidebar row needs it to switch panels. */
-			let layout = null;
-			ctx.inject(['layout'], (scoped) => {
-				layout = scoped.layout;
-			});
 
-			// The panel renders for one dispatched key; the sidebar row selects it.
+			// The panel renders for one dispatched key; the panellist owner draws the
+			// sidebar row and dispatches this same key, so no navigation code is needed.
 			ctx.slots.inject('main', () => ctx.slots.register({
 				name: 'main',
 				key: PANEL_ID,
