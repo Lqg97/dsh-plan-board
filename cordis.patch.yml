@@ -1,0 +1,5 @@
+# 计划看板：Host 半身只提供只读扫描与三条 HTTP 路由，
+# 面板与左侧栏入口都在浏览器里（client.js 的 sidebar.panellist + main 注册）。
+- insert:
+    - id: plan-board
+      name: '@local/dsh-plan-board'

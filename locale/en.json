@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Plan Board",
+    "description": "Reads a workspace's doc/plans/ into a kanban, timeline and cadence view: stage, stall days, header/progress disagreement and MR links for every plan."
+  }
+}
