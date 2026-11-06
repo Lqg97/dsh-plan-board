@@ -18,7 +18,7 @@ function loadClientInternals() {
   assert.ok(source.includes(original), 'factory return marker exists');
   source = source.replace(original, `return {
     inject, apply,
-    __test: { selectCards, limitArchivedCards, timelineWindow, formatStageReason, PlanCard, paginate, zh, en },
+    __test: { selectCards, limitArchivedCards, timelineWindow, formatStageReason, PlanCard, paginate, renderMarkdown, zh, en },
   };`);
   let factory;
   const window = {
@@ -201,6 +201,47 @@ test('evidence pagination is 10 per page and never renders an empty page', () =>
   assert.equal(clamped.items.length, 1);
 });
 
+test('markdown rendering covers the constructs real plans use', () => {
+  const { renderMarkdown } = internals;
+  const types = (md) => JSON.parse(JSON.stringify(renderMarkdown(md))).map((node) => node.type);
+
+  assert.deepEqual(types('# 标题'), ['h2'], 'the H1 is demoted one level under the drawer title');
+  assert.deepEqual(types('## 小节'), ['h3']);
+  assert.deepEqual(types('- a\n- b'), ['ul']);
+  assert.deepEqual(types('1. a\n2. b'), ['ol']);
+  assert.deepEqual(types('> 引用'), ['blockquote']);
+  assert.deepEqual(types('---'), ['hr']);
+  assert.deepEqual(types(['```', 'npm test', '```'].join('\n')), ['pre']);
+  assert.deepEqual(types('段落'), ['p']);
+
+  // A table becomes a wrapper div holding a real table element.
+  const table = JSON.parse(JSON.stringify(renderMarkdown('| a | b |\n| --- | --- |\n| 1 | 2 |')));
+  assert.equal(table.length, 1);
+  assert.equal(table[0].type, 'div');
+  // This harness's createElement stub does not flatten children, so nested
+  // arrays survive here exactly as React received them.
+  const flatten = (nodes) => nodes.flat(Infinity).filter((node) => node !== null && node !== undefined);
+  const inner = flatten(table[0].children)[0];
+  assert.equal(inner.type, 'table');
+  const parts = flatten(inner.children);
+  assert.equal(parts[0].type, 'thead');
+  assert.equal(parts[1].type, 'tbody');
+  const rows = flatten(parts[1].children);
+  assert.equal(rows.length, 1, 'one body row');
+  assert.equal(flatten(rows[0].children).length, 2, 'two cells');
+
+  // A pipe table must not degrade into literal paragraph text.
+  assert.ok(!types('| a | b |\n| --- | --- |\n| 1 | 2 |').includes('p'));
+
+  // Raw HTML in the source stays a text child: the renderer never builds an
+  // element from it, and React escapes text children on the way to the DOM.
+  const rawNodes = JSON.parse(JSON.stringify(renderMarkdown('<img src=x onerror=alert(1)>')));
+  assert.equal(rawNodes.length, 1);
+  assert.equal(rawNodes[0].type, 'p', 'the tag does not become an element');
+  const kids = rawNodes[0].children.flat(Infinity);
+  assert.deepEqual(kids, ['<img src=x onerror=alert(1)>'], 'it stays verbatim text');
+  assert.ok(!JSON.stringify(rawNodes).includes('"type":"img"'), 'no img element is constructed');
+});
 test('zh/en dictionaries expose exactly the same keys', () => {
   const zhKeys = Object.keys(internals.zh).sort();
   const enKeys = Object.keys(internals.en).sort();

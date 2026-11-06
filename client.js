@@ -176,6 +176,7 @@ window.__ModuleLoader__.load({
 			'disc.tabDiscussion': '沟通',
 			'disc.title': '沟通',
 			'panel.planFile': '计划文件',
+			'panel.fullPlan': '完整计划',
 			'panel.evidenceCount': '证据文件（{n}）',
 			'panel.tabContent': '计划内容',
 			'panel.tabEvidence': '证据列表',
@@ -224,6 +225,7 @@ window.__ModuleLoader__.load({
 			'disc.tabDiscussion': 'Conversation',
 			'disc.title': 'Conversation',
 			'panel.planFile': 'Plan file',
+			'panel.fullPlan': 'Full plan',
 			'panel.evidenceCount': 'Evidence files ({n})',
 			'panel.tabContent': 'Plan',
 			'panel.tabEvidence': 'Evidence',
@@ -673,6 +675,35 @@ window.__ModuleLoader__.load({
 .pb-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
   clip:rect(0 0 0 0);white-space:nowrap;border:0}
 
+/* --- full plan markdown --- */
+.pb-md{font-size:13px;line-height:1.8;color:var(--dsw-alias-label-primary);
+  overflow-wrap:break-word;word-break:break-word}
+.pb-md>*:first-child{margin-top:0}
+.pb-md>*:last-child{margin-bottom:0}
+.pb-mdh{margin:22px 0 10px;font-weight:640;line-height:1.45}
+h2.pb-mdh{font-size:15px;padding-bottom:6px;border-bottom:1px solid var(--dsw-alias-border-l1)}
+h3.pb-mdh{font-size:13.5px}
+h4.pb-mdh,h5.pb-mdh,h6.pb-mdh{font-size:12.5px;color:var(--dsw-alias-label-secondary)}
+.pb-mdpara{margin:0 0 12px}
+.pb-mdlist{margin:0 0 12px;padding-left:22px}
+.pb-mdlist>li{margin:4px 0}
+.pb-mdquote{margin:0 0 12px;padding:8px 14px;border-left:3px solid var(--dsw-alias-brand-primary);
+  background:var(--dsw-alias-bg-layer-2);border-radius:0 8px 8px 0;
+  color:var(--dsw-alias-label-secondary);font-size:12.5px}
+.pb-mdquote .pb-mdpara{margin:0 0 6px}
+.pb-mdquote>*:last-child{margin-bottom:0}
+.pb-mdcode{margin:0 0 12px;padding:10px 12px;background:var(--dsw-alias-bg-layer-2);border-radius:8px;
+  overflow:auto;font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:11.5px;line-height:1.65}
+.pb-mdhr{border:0;border-top:1px solid var(--dsw-alias-border-l1);margin:18px 0}
+.pb-mdtablewrap{margin:0 0 12px;overflow-x:auto}
+.pb-mdtable{border-collapse:collapse;font-size:12px;min-width:100%}
+.pb-mdtable th,.pb-mdtable td{border:1px solid var(--dsw-alias-border-l1);
+  padding:6px 10px;text-align:left;vertical-align:top}
+.pb-mdtable th{background:var(--dsw-alias-bg-layer-2);font-weight:600;white-space:nowrap}
+.pb-md code,.pb-mdlist code,.pb-mdpara code{background:var(--dsw-alias-bg-layer-2);
+  padding:1px 5px;border-radius:4px;font-size:11.5px;
+  font-family:var(--ds-font-family-code,ui-monospace,monospace)}
+
 /* --- prose: the plan's own words, readable at last --- */
 .pb-prose{display:flex;flex-direction:column;gap:14px}
 .pb-para{margin:0;font-size:13px;line-height:1.85;color:var(--dsw-alias-label-primary);
@@ -982,6 +1013,125 @@ window.__ModuleLoader__.load({
 			}
 			if (last < text.length) nodes.push(text.slice(last));
 			return nodes;
+		}
+
+		/**
+		 * Render a plan's markdown body.
+		 *
+		 * The shipped plans use headings, paragraphs, ordered/unordered lists,
+		 * blockquotes, fenced code, tables and rules — a real markdown library would
+		 * be a build-time dependency this bundle cannot take, and the app's own
+		 * renderer is not exposed to plugins. So this handles exactly those
+		 * constructs, escapes everything, and never injects HTML.
+		 * @param {string} text - markdown source.
+		 * @returns {import('react').ReactNode[]} block nodes.
+		 */
+		function renderMarkdown(text) {
+			const lines = String(text).replace(/\r\n?/g, '\n').split('\n');
+			const out = [];
+			let index = 0;
+			let key = 0;
+			const nextKey = () => `md${key += 1}`;
+			const isFence = (line) => /^\s*(\`\`\`|~~~)/.test(line);
+			const isHeading = (line) => /^\s{0,3}#{1,6}\s+/.test(line);
+			const isRule = (line) => /^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line);
+			const isQuote = (line) => /^\s{0,3}>/.test(line);
+			const isUl = (line) => /^\s{0,3}[-*+]\s+/.test(line);
+			const isOl = (line) => /^\s{0,3}\d+[.)]\s+/.test(line);
+			const isTable = (line) => /^\s{0,3}\|/.test(line);
+			const cell = (row) => row.trim().replace(/^\||\|$/g, '').split('|').map((part) => part.trim());
+
+			while (index < lines.length) {
+				const line = lines[index];
+				if (line.trim() === '') {
+					index += 1;
+					continue;
+				}
+				// Fenced code: take everything to the closing fence verbatim.
+				if (isFence(line)) {
+					const fence = line.trim().slice(0, 3);
+					const body = [];
+					index += 1;
+					while (index < lines.length && !lines[index].trim().startsWith(fence)) {
+						body.push(lines[index]);
+						index += 1;
+					}
+					index += 1;
+					out.push(h('pre', { key: nextKey(), className: 'pb-mdcode' },
+						h('code', null, body.join('\n'))));
+					continue;
+				}
+				if (isHeading(line)) {
+					const level = /^\s{0,3}(#{1,6})/.exec(line)[1].length;
+					const label = line.replace(/^\s{0,3}#{1,6}\s+/, '').replace(/\s+#+\s*$/, '');
+					out.push(h(`h${Math.min(level + 1, 6)}`, { key: nextKey(), className: 'pb-mdh' },
+						inlineMarkdown(label)));
+					index += 1;
+					continue;
+				}
+				if (isRule(line)) {
+					out.push(h('hr', { key: nextKey(), className: 'pb-mdhr' }));
+					index += 1;
+					continue;
+				}
+				// Table: header row, separator, then body rows.
+				if (isTable(line) && index + 1 < lines.length
+					&& /^\s{0,3}\|?[\s:-]*-[\s|:-]*$/.test(lines[index + 1])) {
+					const head = cell(line);
+					index += 2;
+					const rows = [];
+					while (index < lines.length && isTable(lines[index])) {
+						rows.push(cell(lines[index]));
+						index += 1;
+					}
+					out.push(h('div', { key: nextKey(), className: 'pb-mdtablewrap' },
+						h('table', { className: 'pb-mdtable' }, [
+							h('thead', { key: 'h' }, h('tr', null,
+								head.map((value, column) => h('th', { key: column }, inlineMarkdown(value))))),
+							h('tbody', { key: 'b' }, rows.map((row, rowIndex) => h('tr', { key: rowIndex },
+								head.map((_, column) => h('td', { key: column }, inlineMarkdown(row[column] ?? '')))))),
+						])));
+					continue;
+				}
+				// Blockquote: consecutive '>' lines become one quote block.
+				if (isQuote(line)) {
+					const body = [];
+					while (index < lines.length && isQuote(lines[index])) {
+						body.push(lines[index].replace(/^\s{0,3}>\s?/, ''));
+						index += 1;
+					}
+					out.push(h('blockquote', { key: nextKey(), className: 'pb-mdquote' },
+						renderMarkdown(body.join('\n'))));
+					continue;
+				}
+				// Lists: one <ul>/<ol> per run; nested markers stay as text.
+				if (isUl(line) || isOl(line)) {
+					const ordered = isOl(line);
+					const items = [];
+					while (index < lines.length && (ordered ? isOl(lines[index]) : isUl(lines[index]))) {
+						items.push(lines[index].replace(/^\s{0,3}(?:\d+[.)]|[-*+])\s+/, ''));
+						index += 1;
+					}
+					out.push(h(ordered ? 'ol' : 'ul', { key: nextKey(), className: 'pb-mdlist' },
+						items.map((item, itemIndex) => h('li', { key: itemIndex }, inlineMarkdown(item)))));
+					continue;
+				}
+				// Paragraph: gather until a blank line or another block starts.
+				const para = [];
+				while (index < lines.length) {
+					const current = lines[index];
+					if (current.trim() === '' || isFence(current) || isHeading(current)
+						|| isRule(current) || isQuote(current) || isTable(current)
+						|| isUl(current) || isOl(current)) break;
+					para.push(current);
+					index += 1;
+				}
+				if (para.length > 0) {
+					out.push(h('p', { key: nextKey(), className: 'pb-mdpara' },
+						inlineMarkdown(para.join(' '))));
+				}
+			}
+			return out;
 		}
 
 		/**
@@ -1997,18 +2147,50 @@ window.__ModuleLoader__.load({
 					: null,
 			]);
 
-			const headerCard = (detail.headerLines ?? []).length > 0
-				? h('div', { key: 'block', className: 'pb-card' }, [
-					h('div', { key: 'st', className: 'pb-st' }, tr('panel.headerBlock')),
-					h('div', { key: 'lines', className: 'pb-prose' }, detail.headerLines.map((line, index) => h('p', {
-						key: `l${index}`, className: 'pb-para',
-					}, inlineMarkdown(line)))),
-				])
-				: null;
+			// The full plan body: the same confined route the file viewer uses, so
+			// nothing new is read from disk and nothing is written back.
+			const [bodyState, setBodyState] = React.useState({ loading: true, text: null, error: null });
+			React.useEffect(() => {
+				let disposed = false;
+				setBodyState({ loading: true, text: null, error: null });
+				fetchRoute('file', workspace, { kind: 'plan', slug: detail.slug })
+					.then((payload) => {
+						if (disposed) return;
+						// The status block is already shown in the summary strip; strip it
+						// from the body so the reader does not see the same paragraph twice.
+						const raw = String(payload.text ?? '');
+						const lines = raw.replace(/\r\n?/g, '\n').split('\n');
+						let cut = 0;
+						while (cut < lines.length) {
+							const line = lines[cut];
+							if (cut === 0 && /^#\s/.test(line)) { cut += 1; continue; }
+							if (/^\s*>/.test(line) || line.trim() === '') { cut += 1; continue; }
+							break;
+						}
+						setBodyState({ loading: false, text: lines.slice(cut).join('\n'), error: null });
+					})
+					.catch((cause) => {
+						if (disposed) return;
+						setBodyState({
+							loading: false,
+							text: null,
+							error: cause instanceof Error ? cause.message : String(cause),
+						});
+					});
+				return () => {
+					disposed = true;
+				};
+			}, [workspace, detail.slug]);
 
-			// The detail page is split rather than scrolled: "content" holds the plan's
-			// own words (long prose, dated progress), "facts" holds derived fields
-			// and files. Both are short enough to read without hunting.
+			const headerCard = h('div', { key: 'block', className: 'pb-card' }, [
+				h('div', { key: 'st', className: 'pb-st' }, tr('panel.fullPlan')),
+				bodyState.loading
+					? h('div', { key: 'l', className: 'pb-loading' }, tr('panel.loading'))
+					: bodyState.error !== null
+						? h('div', { key: 'e', className: 'pb-error' }, bodyState.error)
+						: h('div', { key: 'body', className: 'pb-md' }, renderMarkdown(bodyState.text)),
+			]);
+
 			const detailTabs = h('div', { key: 'subtabs', className: 'pb-subtabs', role: 'tablist' }, [
 				...[
 					['content', tr('panel.tabContent'), null],
