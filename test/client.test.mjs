@@ -18,7 +18,7 @@ function loadClientInternals() {
   assert.ok(source.includes(original), 'factory return marker exists');
   source = source.replace(original, `return {
     inject, apply,
-    __test: { selectCards, limitArchivedCards, timelineWindow, formatStageReason, PlanCard, zh, en },
+    __test: { selectCards, limitArchivedCards, timelineWindow, formatStageReason, PlanCard, paginate, zh, en },
   };`);
   let factory;
   const window = {
@@ -181,6 +181,24 @@ test('PlanCard Space opens once and prevents page scrolling', () => {
   element.props.onKeyDown(event);
   assert.equal(prevented, 1);
   assert.deepEqual(opened, ['keyboard']);
+});
+
+test('evidence pagination is 10 per page and never renders an empty page', () => {
+  const { paginate } = internals;
+  assert.ok(paginate !== undefined, 'paginate helper is exposed');
+  const plain = (value) => JSON.parse(JSON.stringify(value));
+
+  assert.deepEqual(plain(paginate(0, 0)), { page: 0, pages: 1, from: 0, to: 0, items: [] });
+  assert.deepEqual(plain(paginate(1, 0)), { page: 0, pages: 1, from: 1, to: 1, items: [0] });
+  assert.deepEqual(plain(paginate(10, 0)), { page: 0, pages: 1, from: 1, to: 10, items: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] });
+  assert.equal(paginate(22, 0).pages, 3);
+  assert.deepEqual(paginate(22, 1).items.length, 10);
+  assert.deepEqual(paginate(22, 2).items.length, 2);
+
+  // A page index left over from a longer list must clamp, not render blank.
+  const clamped = paginate(11, 5);
+  assert.equal(clamped.page, 1);
+  assert.equal(clamped.items.length, 1);
 });
 
 test('zh/en dictionaries expose exactly the same keys', () => {

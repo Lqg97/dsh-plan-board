@@ -36,8 +36,8 @@ window.__ModuleLoader__.load({
 
 		/** Number of archived cards shown before the reader explicitly expands all. */
 		const ARCHIVED_SHOWN = 6;
-		/** Evidence files shown before the reader expands the grid. */
-		const EVIDENCE_PREVIEW = 6;
+		/** Evidence files per page. */
+		const EVIDENCE_PAGE_SIZE = 10;
 
 		/** Column accent colours; the only literal colours in the file, used as dots. */
 		const STAGE_HUE = {
@@ -177,8 +177,9 @@ window.__ModuleLoader__.load({
 			'panel.evidenceCount': '证据文件（{n}）',
 			'panel.tabContent': '计划内容',
 			'panel.tabFiles': '文件',
-			'action.showAllEvidence': '展开全部 {n} 个',
-			'action.showLessEvidence': '收起（只显示 {n} 个）',
+			'action.prevPage': '上一页',
+			'action.nextPage': '下一页',
+			'action.pageInfo': '第 {page}/{total} 页 · {from}–{to}，共 {n} 个',
 			'view.file': '查看',
 			'view.fileOpen': '查看内容',
 			'view.fileLoading': '读取中…',
@@ -221,8 +222,9 @@ window.__ModuleLoader__.load({
 			'panel.evidenceCount': 'Evidence files ({n})',
 			'panel.tabContent': 'Plan',
 			'panel.tabFiles': 'Files',
-			'action.showAllEvidence': 'Show all {n}',
-			'action.showLessEvidence': 'Collapse to {n}',
+			'action.prevPage': 'Previous page',
+			'action.nextPage': 'Next page',
+			'action.pageInfo': 'Page {page}/{total} · {from}–{to} of {n}',
 			'view.file': 'View',
 			'view.fileOpen': 'View content',
 			'view.fileLoading': 'Loading…',
@@ -593,9 +595,9 @@ window.__ModuleLoader__.load({
 /* --- files --- */
 .pb-filegroup+.pb-filegroup{margin-top:16px;padding-top:14px;border-top:1px solid var(--dsw-alias-border-l1)}
 .pb-filelabel{font-size:11px;color:var(--dsw-alias-label-secondary);margin-bottom:6px;letter-spacing:.02em}
-.pb-pathrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pb-pathrow{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0}
 .pb-pathrow+.pb-pathrow{margin-top:6px}
-.pb-pathrow .pb-openrow{flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:10px;font:inherit;
+.pb-pathrow .pb-openrow{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;font:inherit;
   text-align:left;background:var(--dsw-alias-bg-layer-2);border:1px solid transparent;border-radius:8px;
   color:var(--dsw-alias-label-primary);padding:9px 12px;cursor:pointer;transition:border-color .12s,background .12s}
 .pb-pathrow .pb-openrow:hover{border-color:var(--dsw-alias-brand-primary);
@@ -604,22 +606,18 @@ window.__ModuleLoader__.load({
   overflow-wrap:anywhere;word-break:normal;line-height:1.5}
 .pb-pathrow .pb-open{flex:none;font-size:11px;color:var(--dsw-alias-label-secondary)}
 .pb-pathrow .pb-openrow:hover .pb-open{color:var(--dsw-alias-brand-primary)}
-.pb-copy{flex:none;font:inherit;font-size:10.5px;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;
-  background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:6px 8px;cursor:pointer;
+.pb-copy{flex:0 0 auto;font:inherit;font-size:11px;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;
+  background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:6px 10px;cursor:pointer;
   white-space:nowrap}
 .pb-copy:hover{color:var(--dsw-alias-label-primary)}
 .pb-copy[data-error='true']{color:var(--dsw-alias-state-error-primary)}
 
-/* --- columns --- */
-/* --- files: a wide grid of chips, not a tall list in a narrow rail --- */
-.pb-filescard .pb-filetoggle{margin-left:auto}
-.pb-filetoggle{font:inherit;font-size:11px;font-weight:500;background:none;border:0;padding:2px 0;cursor:pointer;
-  color:var(--dsw-alias-brand-primary);letter-spacing:0;text-transform:none;white-space:nowrap}
-.pb-filetoggle:hover{text-decoration:underline}
-.pb-files{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
-.pb-files .pb-pathrow{margin:0}
-.pb-files .pb-pathrow .pb-openrow{padding:8px 11px}
-.pb-files .pb-pathrow .pb-fname{font-size:11.5px}
+/* --- files: one per row, paginated so a long list never floods the page --- */
+.pb-files{display:flex;flex-direction:column}
+.pb-files .pb-pathrow{margin:0;padding:0}
+.pb-files .pb-pathrow+.pb-pathrow{margin-top:2px}
+.pb-files .pb-pathrow .pb-openrow{padding:8px 11px;flex:1 1 auto}
+.pb-files .pb-pathrow .pb-fname{font-size:12px;white-space:normal}
 .pb-filescard .pb-filegroup+.pb-filegroup{margin-top:14px;padding-top:12px}
 @media(max-width:900px){}
 
@@ -804,6 +802,27 @@ window.__ModuleLoader__.load({
 			if (detail.stageReason === '无状态关键词，按在飞处理') return tr('reason.fallback');
 			const match = /^命中「(.+)」$/.exec(detail.stageReason ?? '');
 			return match === null ? detail.stageReason : tr('reason.matched', { phrase: match[1] });
+		}
+
+		/**
+		 * Window one list into a fixed-size page.
+		 *
+		 * Clamps the requested index so a page left over from a longer list can
+		 * never render an empty page.
+		 * @param {number} total - item count.
+		 * @param {number} requested - requested page index.
+		 * @param {number} [size] - page size.
+		 * @returns {{ page: number, pages: number, from: number, to: number, items: number[] }} window.
+		 */
+		function paginate(total, requested, size = EVIDENCE_PAGE_SIZE) {
+			const count = Math.max(0, Number(total) || 0);
+			const pages = Math.max(1, Math.ceil(count / size));
+			const page = Math.min(Math.max(0, Number(requested) || 0), pages - 1);
+			const start = page * size;
+			const end = Math.min(start + size, count);
+			const items = [];
+			for (let index = start; index < end; index += 1) items.push(index);
+			return { page, pages, from: count === 0 ? 0 : start + 1, to: end, items };
 		}
 
 		/**
@@ -1671,7 +1690,7 @@ window.__ModuleLoader__.load({
 			const [detailTab, setDetailTab] = React.useState('content');
 			/** `{ kind, name }` of the file open in the viewer, or null for the plain drawer. */
 			const [viewing, setViewing] = React.useState(null);
-			const [evidenceExpanded, setEvidenceExpanded] = React.useState(false);
+			const [evidencePage, setEvidencePage] = React.useState(0);
 			const [pending, setPending] = React.useState({ count: 0, running: false });
 			// The panel owns a new closure on every render, so a dependency on it would
 			// re-fetch the conversation in a loop; the slug is what actually changes.
@@ -1684,7 +1703,7 @@ window.__ModuleLoader__.load({
 			React.useEffect(() => {
 				setViewing(null);
 				setDetailTab('content');
-				setEvidenceExpanded(false);
+				setEvidencePage(0);
 				setCopyState({ path: null, error: false });
 				// Missing counts leave the conversation signal alone; a real reply or a
 				// queued comment always repaints it.
@@ -1856,20 +1875,10 @@ window.__ModuleLoader__.load({
 			// Files span both columns: a narrow rail turns every long evidence file
 			// name into three wrapped lines. A wide grid of chips reads far better.
 			const evidence = detail.evidence ?? [];
-			const shownEvidence = evidenceExpanded ? evidence : evidence.slice(0, EVIDENCE_PREVIEW);
+			const window_ = paginate(evidence.length, evidencePage);
+			const pageItems = window_.items.map((index) => evidence[index]);
 			const filesCard = h('div', { key: 'files', className: 'pb-card pb-filescard' }, [
-				h('div', { key: 'st', className: 'pb-st' }, [
-					h('span', { key: 't' }, tr('panel.files')),
-					evidence.length > EVIDENCE_PREVIEW
-						? h('button', {
-							key: 'x', type: 'button', className: 'pb-filetoggle',
-							'onClick': () => setEvidenceExpanded((value) => !value),
-							'aria-expanded': Boolean(evidenceExpanded),
-						}, evidenceExpanded
-							? tr('action.showLessEvidence', { n: EVIDENCE_PREVIEW })
-							: tr('action.showAllEvidence', { n: evidence.length }))
-						: null,
-				]),
+				h('div', { key: 'st', className: 'pb-st' }, tr('panel.files')),
 				h('div', { key: 'plan', className: 'pb-filegroup' }, [
 					h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.planFile')),
 					pathRow(planPath, { kind: 'plan', name: detail.file }),
@@ -1877,10 +1886,34 @@ window.__ModuleLoader__.load({
 				evidence.length > 0
 					? h('div', { key: 'evidence', className: 'pb-filegroup' }, [
 						h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.evidenceCount', { n: evidence.length })),
-						h('div', { key: 'grid', className: 'pb-files' }, shownEvidence.map((entry) => pathRow(
+						h('div', { key: 'grid', className: 'pb-files' }, pageItems.map((entry) => pathRow(
 							`${detail.evidenceDir}/${entry}`,
 							{ kind: 'evidence', name: entry },
 						))),
+						window_.pages > 1
+							? h('div', { key: 'pager', className: 'pb-pager' }, [
+								h('button', {
+									key: 'prev', type: 'button', className: 'pb-pagebtn',
+									disabled: window_.page === 0,
+									'onClick': () => setEvidencePage(page - 1),
+									'aria-label': tr('action.prevPage'),
+								}, '‹'),
+								h('span', { key: 'info', className: 'pb-pageinfo' },
+									tr('action.pageInfo', {
+										page: window_.page + 1,
+										total: window_.pages,
+										from: window_.from,
+										to: window_.to,
+										n: evidence.length,
+									})),
+								h('button', {
+									key: 'next', type: 'button', className: 'pb-pagebtn',
+									disabled: window_.page >= window_.pages - 1,
+									'onClick': () => setEvidencePage(page + 1),
+									'aria-label': tr('action.nextPage'),
+								}, '›'),
+							])
+							: null,
 					])
 					: null,
 			]);
