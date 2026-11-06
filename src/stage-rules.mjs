@@ -28,7 +28,10 @@ const PHRASES = {
     '待用户授权', '待授权', '需授权', '等授权', '同窗口合入', '待拍板',
     '待归属', '待负责人', '阻塞',
   ],
-  ci: ['opened', '待合入', 'CI 已绿', 'can_be_merged', 'commit_check_state=success'],
+  ci: [
+    'opened', '待合入', 'CI 已绿', 'CI 均绿', '均可合并',
+    'can_be_merged', 'commit_check_state=success',
+  ],
   release: ['已合入', '发布验收', '观察窗', '灰度', '待正式发布', '待验收'],
   design: ['方案待评审', '待评审', '未动代码'],
 };

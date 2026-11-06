@@ -19,5 +19,8 @@ jobs:
           node --check src/scan-plans.mjs
           node --check src/stage-rules.mjs
           node --check src/board.mjs
+          node --check src/discussion.mjs
+          node --check src/discussion-index.mjs
+          node --check src/dsh-session.mjs
       - name: Unit tests
         run: node --test test/*.test.mjs

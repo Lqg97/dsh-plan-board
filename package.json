@@ -40,6 +40,11 @@
     "test": "node --test test/*.test.mjs"
   },
   "dsh": {
+    "inject": [
+      "webServer",
+      "connection",
+      "workspaceRegistry"
+    ],
     "bundle": {
       "patch": "./cordis.patch.yml"
     },

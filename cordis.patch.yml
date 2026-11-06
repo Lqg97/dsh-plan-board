@@ -1,4 +1,6 @@
-# 计划看板：Host 半身只提供只读扫描与三条 HTTP 路由，
+# 计划看板：Host 半身提供只读扫描（看板 / 详情 / 节奏 / 工作区列表），
+# 外加计划沟通所需的讨论路由与 plan_board_comment_add 工具。
+# 计划文件仍是阶段与进展的唯一事实源；沟通记录单独存放，不回写 doc/plans/。
 # 面板与左侧栏入口都在浏览器里（client.js 的 sidebar.panellist + main 注册）。
 - insert:
     - id: plan-board
