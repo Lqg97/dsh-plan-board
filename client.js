@@ -1895,9 +1895,13 @@ h4.pb-mdh,h5.pb-mdh,h6.pb-mdh{font-size:12.5px;color:var(--dsw-alias-label-secon
 			// nothing new is read from disk and nothing is written back.
 			const [bodyState, setBodyState] = React.useState({ loading: true, text: null, error: null });
 			React.useEffect(() => {
+				// This hook now runs before the null guard (React needs a stable hook
+				// count), so the effect must tolerate a null detail body itself.
+				const slug = detail?.slug;
+				if (slug === undefined) return undefined;
 				let disposed = false;
 				setBodyState({ loading: true, text: null, error: null });
-				fetchRoute('file', workspace, { kind: 'plan', slug: detail.slug })
+				fetchRoute('file', workspace, { kind: 'plan', slug })
 					.then((payload) => {
 						if (disposed) return;
 						// The status block is already shown in the summary strip; strip it

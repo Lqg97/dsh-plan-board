@@ -374,6 +374,63 @@ test('the panel survives its first frame and a later drawer render', () => {
   assert.equal(hooks, firstCount, 'the panel keeps a stable hook count');
 });
 
+test('drawer effects survive a null detail', () => {
+  // Moving the plan-body hook above the null guard kept the hook count stable,
+  // but its effect still dereferenced `detail.slug` and threw on the very first
+  // frame. Effects are executed here (the other harnesses stub them out), so a
+  // crash inside an effect body cannot hide.
+  let source = fs.readFileSync(new URL('../client.js', import.meta.url), 'utf8');
+  source = source.replace('return { inject, apply };',
+    'return { inject, apply, __test: { PlanDrawer, zh } };');
+  let factory;
+  const window = {
+    __ModuleLoader__: { load(definition) { factory = definition.factory; } },
+    localStorage: { getItem() { return null; }, setItem() {} },
+  };
+  const thrown = [];
+  const React = {
+    createElement(type, props, ...children) {
+      return { type, props: props ?? {}, children: children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false) };
+    },
+    useRef(value) { return { current: value }; },
+    useState(initial) { return [typeof initial === 'function' ? initial() : initial, () => {}]; },
+    useEffect(fn) {
+      try {
+        const cleanup = fn();
+        if (typeof cleanup === 'function') cleanup();
+      } catch (error) {
+        thrown.push(error);
+      }
+    },
+    useCallback(fn) { return fn; },
+    useMemo(fn) { return fn(); },
+  };
+  vm.runInNewContext(source, {
+    window, console, URLSearchParams, setTimeout, clearTimeout,
+    fetch: async () => ({ ok: true, json: async () => ({ text: '# T\n\n> s\n\nbody' }) }),
+    document: { activeElement: null },
+  });
+  const api = factory((id) => { if (id === 'react') return React; throw new Error(id); });
+  const { PlanDrawer, zh } = api.__test;
+  const tr = (key) => zh[key] ?? key;
+
+  PlanDrawer({ detail: null, tr, onClose() {}, workspace: '/tmp/ws' });
+  assert.deepEqual(thrown.map((error) => error.message), [], 'no effect may throw on the first frame');
+
+  // And the same holds once a plan arrives.
+  thrown.length = 0;
+  PlanDrawer({
+    detail: {
+      slug: 'p', title: 'T', stage: 'doing', health: 'ok', idleDays: 0, file: 'p.md', archived: false,
+      evidenceDir: null, evidence: [], recentProgress: [], headerLines: [], mergeRequests: [],
+      progressCount: 0, fileMtime: '2026-10-26T00:00:00Z', headerStatusDate: null,
+      lastProgressDate: null, stageReason: '命中「实施中」',
+    },
+    tr, onClose() {}, workspace: '/tmp/ws',
+  });
+  assert.deepEqual(thrown.map((error) => error.message), [], 'no effect may throw once loaded');
+});
+
 test('zh/en dictionaries expose exactly the same keys', () => {
   const zhKeys = Object.keys(internals.zh).sort();
   const enKeys = Object.keys(internals.en).sort();
