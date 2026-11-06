@@ -1891,6 +1891,41 @@ h4.pb-mdh,h5.pb-mdh,h6.pb-mdh{font-size:12.5px;color:var(--dsw-alias-label-secon
 				setPending({ count, running });
 				reportRef.current?.(detail?.slug ?? '', { pending: count, running });
 			}, [detail?.slug]);
+			// The full plan body: the same confined route the file viewer uses, so
+			// nothing new is read from disk and nothing is written back.
+			const [bodyState, setBodyState] = React.useState({ loading: true, text: null, error: null });
+			React.useEffect(() => {
+				let disposed = false;
+				setBodyState({ loading: true, text: null, error: null });
+				fetchRoute('file', workspace, { kind: 'plan', slug: detail.slug })
+					.then((payload) => {
+						if (disposed) return;
+						// The status block is already shown in the summary strip; strip it
+						// from the body so the reader does not see the same paragraph twice.
+						const raw = String(payload.text ?? '');
+						const lines = raw.replace(/\r\n?/g, '\n').split('\n');
+						let cut = 0;
+						while (cut < lines.length) {
+							const line = lines[cut];
+							if (cut === 0 && /^#\s/.test(line)) { cut += 1; continue; }
+							if (/^\s*>/.test(line) || line.trim() === '') { cut += 1; continue; }
+							break;
+						}
+						setBodyState({ loading: false, text: lines.slice(cut).join('\n'), error: null });
+					})
+					.catch((cause) => {
+						if (disposed) return;
+						setBodyState({
+							loading: false,
+							text: null,
+							error: cause instanceof Error ? cause.message : String(cause),
+						});
+					});
+				return () => {
+					disposed = true;
+				};
+			}, [workspace, detail?.slug]);
+
 			React.useEffect(() => {
 				setViewing(null);
 				setDetailTab('content');
@@ -2146,41 +2181,6 @@ h4.pb-mdh,h5.pb-mdh,h6.pb-mdh{font-size:12.5px;color:var(--dsw-alias-label-secon
 					])
 					: null,
 			]);
-
-			// The full plan body: the same confined route the file viewer uses, so
-			// nothing new is read from disk and nothing is written back.
-			const [bodyState, setBodyState] = React.useState({ loading: true, text: null, error: null });
-			React.useEffect(() => {
-				let disposed = false;
-				setBodyState({ loading: true, text: null, error: null });
-				fetchRoute('file', workspace, { kind: 'plan', slug: detail.slug })
-					.then((payload) => {
-						if (disposed) return;
-						// The status block is already shown in the summary strip; strip it
-						// from the body so the reader does not see the same paragraph twice.
-						const raw = String(payload.text ?? '');
-						const lines = raw.replace(/\r\n?/g, '\n').split('\n');
-						let cut = 0;
-						while (cut < lines.length) {
-							const line = lines[cut];
-							if (cut === 0 && /^#\s/.test(line)) { cut += 1; continue; }
-							if (/^\s*>/.test(line) || line.trim() === '') { cut += 1; continue; }
-							break;
-						}
-						setBodyState({ loading: false, text: lines.slice(cut).join('\n'), error: null });
-					})
-					.catch((cause) => {
-						if (disposed) return;
-						setBodyState({
-							loading: false,
-							text: null,
-							error: cause instanceof Error ? cause.message : String(cause),
-						});
-					});
-				return () => {
-					disposed = true;
-				};
-			}, [workspace, detail.slug]);
 
 			const headerCard = h('div', { key: 'block', className: 'pb-card' }, [
 				h('div', { key: 'st', className: 'pb-st' }, tr('panel.fullPlan')),

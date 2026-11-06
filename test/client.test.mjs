@@ -242,6 +242,138 @@ test('markdown rendering covers the constructs real plans use', () => {
   assert.deepEqual(kids, ['<img src=x onerror=alert(1)>'], 'it stays verbatim text');
   assert.ok(!JSON.stringify(rawNodes).includes('"type":"img"'), 'no img element is constructed');
 });
+test('the drawer calls the same number of hooks on every render', () => {
+  // React unmounts the tree with "Rendered more hooks than during the previous
+  // render" when the count changes between renders — that white-screened the
+  // panel once already (a hook placed after an early return).
+  let source = fs.readFileSync(new URL('../client.js', import.meta.url), 'utf8');
+  source = source.replace('return { inject, apply };',
+    'return { inject, apply, __test: { PlanDrawer, zh } };');
+  let factory;
+  const window = {
+    __ModuleLoader__: { load(definition) { factory = definition.factory; } },
+    localStorage: { getItem() { return null; }, setItem() {} },
+  };
+  let hooks = 0;
+  const React = {
+    createElement(type, props, ...children) {
+      return { type, props: props ?? {}, children: children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false) };
+    },
+    useRef(value) { hooks += 1; return { current: value }; },
+    useState(initial) { hooks += 1; return [typeof initial === 'function' ? initial() : initial, () => {}]; },
+    useEffect() { hooks += 1; },
+    useCallback(fn) { hooks += 1; return fn; },
+    useMemo(fn) { hooks += 1; return fn(); },
+  };
+  vm.runInNewContext(source, {
+    window, console, URLSearchParams, setTimeout, clearTimeout,
+    fetch: async () => ({ ok: true, json: async () => ({}) }),
+    document: { activeElement: null },
+  });
+  const api = factory((id) => { if (id === 'react') return React; throw new Error(id); });
+  const { PlanDrawer, zh } = api.__test;
+  const tr = (key, params) => {
+    let text = zh[key] ?? key;
+    if (params) text = text.replace(/\{(\w+)\}/g, (whole, name) => (name in params ? String(params[name]) : whole));
+    return text;
+  };
+
+  const loaded = {
+    slug: 'p', title: 'T', stage: 'doing', health: 'ok', idleDays: 0, file: 'p.md', archived: false,
+    evidenceDir: 'doc/plans/evidence/p', evidence: ['a', 'b'],
+    recentProgress: [{ date: '2026-10-26', heading: 'x' }], headerLines: ['> s'],
+    mergeRequests: [], progressCount: 1, fileMtime: '2026-10-26T00:00:00Z',
+    headerStatusDate: '2026-10-26', lastProgressDate: '2026-10-26', stageReason: '命中「实施中」',
+  };
+
+  const counts = [];
+  for (const detail of [{ slug: 'p', loading: true }, loaded]) {
+    hooks = 0;
+    PlanDrawer({ detail, tr, onClose() {}, workspace: '/tmp/ws' });
+    counts.push(hooks);
+  }
+  assert.deepEqual(counts, [counts[0], counts[0]], 'hook count must not depend on render state');
+  assert.ok(counts[0] > 0, 'the drawer actually uses hooks');
+});
+
+test('the drawer renders while its detail is still null', () => {
+  // The panel always mounts the drawer with `detail: null` before any plan is
+  // selected. A hook placed before that guard which reads `detail.slug` threw
+  // here and white-screened the whole panel.
+  let source = fs.readFileSync(new URL('../client.js', import.meta.url), 'utf8');
+  source = source.replace('return { inject, apply };',
+    'return { inject, apply, __test: { PlanDrawer, zh } };');
+  let factory;
+  const window = {
+    __ModuleLoader__: { load(definition) { factory = definition.factory; } },
+    localStorage: { getItem() { return null; }, setItem() {} },
+  };
+  const React = {
+    createElement(type, props, ...children) {
+      return { type, props: props ?? {}, children: children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false) };
+    },
+    useRef(value) { return { current: value }; },
+    useState(initial) { return [typeof initial === 'function' ? initial() : initial, () => {}]; },
+    useEffect() {},
+    useCallback(fn) { return fn; },
+    useMemo(fn) { return fn(); },
+  };
+  vm.runInNewContext(source, {
+    window, console, URLSearchParams, setTimeout, clearTimeout,
+    fetch: async () => ({ ok: true, json: async () => ({}) }),
+    document: { activeElement: null },
+  });
+  const api = factory((id) => { if (id === 'react') return React; throw new Error(id); });
+  const { PlanDrawer, zh } = api.__test;
+  const tr = (key) => zh[key] ?? key;
+
+  assert.equal(PlanDrawer({ detail: null, tr, onClose() {}, workspace: '/tmp/ws' }), null);
+});
+
+test('the panel survives its first frame and a later drawer render', () => {
+  // The panel mounts with no workspace, no board and `detail: null`, then
+  // re-renders with data. React compares hook counts between those renders, so
+  // a hook that only runs once the drawer has content white-screens the panel.
+  let source = fs.readFileSync(new URL('../client.js', import.meta.url), 'utf8');
+  source = source.replace('return { inject, apply };',
+    'return { inject, apply, __test: { PlanDrawer, PlanBoardPanel, zh } };');
+  let factory;
+  const window = {
+    __ModuleLoader__: { load(definition) { factory = definition.factory; } },
+    localStorage: { getItem() { return null; }, setItem() {} },
+  };
+  let hooks = 0;
+  const React = {
+    createElement(type, props, ...children) {
+      if (typeof type === 'function') return type({ ...props, children });
+      return { type, props: props ?? {}, children: children.flat(Infinity).filter((c) => c !== null && c !== undefined && c !== false) };
+    },
+    useRef(value) { hooks += 1; return { current: value }; },
+    useState(initial) { hooks += 1; return [typeof initial === 'function' ? initial() : initial, () => {}]; },
+    useEffect() { hooks += 1; },
+    useCallback(fn) { hooks += 1; return fn; },
+    useMemo(fn) { hooks += 1; return fn(); },
+  };
+  vm.runInNewContext(source, {
+    window, console, URLSearchParams, setTimeout, clearTimeout,
+    fetch: async () => ({ ok: true, json: async () => ({}) }),
+    document: { activeElement: null },
+  });
+  const api = factory((id) => { if (id === 'react') return React; throw new Error(id); });
+  const { PlanDrawer, zh } = api.__test;
+  const tr = (key) => zh[key] ?? key;
+
+  hooks = 0;
+  const first = api.__test.PlanBoardPanel({ t: tr });
+  const firstCount = hooks;
+  assert.ok(first !== undefined, 'the first frame renders');
+
+  hooks = 0;
+  const second = api.__test.PlanBoardPanel({ t: tr });
+  assert.ok(second !== undefined, 'the second frame renders');
+  assert.equal(hooks, firstCount, 'the panel keeps a stable hook count');
+});
+
 test('zh/en dictionaries expose exactly the same keys', () => {
   const zhKeys = Object.keys(internals.zh).sort();
   const enKeys = Object.keys(internals.en).sort();
