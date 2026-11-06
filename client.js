@@ -176,7 +176,7 @@ window.__ModuleLoader__.load({
 			'panel.planFile': '计划文件',
 			'panel.evidenceCount': '证据文件（{n}）',
 			'panel.tabContent': '计划内容',
-			'panel.tabFacts': '字段与文件',
+			'panel.tabFiles': '文件',
 			'action.showAllEvidence': '展开全部 {n} 个',
 			'action.showLessEvidence': '收起（只显示 {n} 个）',
 			'view.file': '查看',
@@ -220,7 +220,7 @@ window.__ModuleLoader__.load({
 			'panel.planFile': 'Plan file',
 			'panel.evidenceCount': 'Evidence files ({n})',
 			'panel.tabContent': 'Plan',
-			'panel.tabFacts': 'Fields & files',
+			'panel.tabFiles': 'Files',
 			'action.showAllEvidence': 'Show all {n}',
 			'action.showLessEvidence': 'Collapse to {n}',
 			'view.file': 'View',
@@ -547,6 +547,17 @@ window.__ModuleLoader__.load({
 .pb-dbody{flex:1;min-height:0;overflow:auto;padding:22px 26px 32px}
 
 /* --- summary: the one thing to read first --- */
+/* --- derived-field strip: label above value, wraps into columns --- */
+.pb-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;
+  margin-bottom:16px;background:var(--dsw-alias-border-l1);border:1px solid var(--dsw-alias-border-l1);
+  border-radius:10px;overflow:hidden}
+.pb-cell{display:flex;flex-direction:column;gap:3px;padding:10px 13px;
+  background:var(--dsw-alias-bg-layer-1);min-width:0}
+@media(max-width:760px){.pb-strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.pb-cellk{font-size:10.5px;color:var(--dsw-alias-label-secondary);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.pb-cellv{font-size:12.5px;font-weight:500;overflow-wrap:break-word;word-break:break-word}
+
 /* --- second-level tabs: underline style, clearly subordinate to the pills --- */
 .pb-subtabs{display:flex;gap:2px;flex-wrap:wrap;margin:0 0 16px;
   border-bottom:1px solid var(--dsw-alias-border-l1)}
@@ -561,8 +572,7 @@ window.__ModuleLoader__.load({
   color:var(--dsw-alias-label-secondary);border-radius:999px;padding:0 6px;line-height:16px}
 .pb-subtab[data-on='true'] .pb-subcount{color:var(--dsw-alias-brand-primary)}
 /* Facts view: derived fields on the left, files on the right. */
-.pb-factcols{grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr)}
-@media(max-width:900px){.pb-factcols{grid-template-columns:1fr}}
+@media(max-width:900px){}
 
 .pb-summary{padding:16px 18px;margin-bottom:20px;border-radius:12px;
   background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1)}
@@ -579,13 +589,6 @@ window.__ModuleLoader__.load({
   text-transform:uppercase;font-weight:600;margin-bottom:12px}
 
 /* --- derived facts: label/value rows, never squeezed --- */
-.pb-kvlist{display:flex;flex-direction:column}
-.pb-kvrow{display:flex;align-items:baseline;justify-content:space-between;gap:20px;
-  padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l1);font-size:12.5px;line-height:1.6}
-.pb-kvrow:first-child{padding-top:0}
-.pb-kvrow:last-child{border-bottom:0;padding-bottom:0}
-.pb-kvrow .pb-k{color:var(--dsw-alias-label-secondary);flex:0 0 auto;white-space:nowrap}
-.pb-kvrow .pb-v{text-align:right;min-width:0;flex:1 1 auto;overflow-wrap:break-word;word-break:break-word}
 
 /* --- files --- */
 .pb-filegroup+.pb-filegroup{margin-top:16px;padding-top:14px;border-top:1px solid var(--dsw-alias-border-l1)}
@@ -618,9 +621,7 @@ window.__ModuleLoader__.load({
 .pb-files .pb-pathrow .pb-openrow{padding:8px 11px}
 .pb-files .pb-pathrow .pb-fname{font-size:11.5px}
 .pb-filescard .pb-filegroup+.pb-filegroup{margin-top:14px;padding-top:12px}
-.pb-dcols{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:start}
-.pb-colmain,.pb-colside{display:flex;flex-direction:column;min-width:0}
-@media(max-width:900px){.pb-dcols{grid-template-columns:1fr}}
+@media(max-width:900px){}
 
 .pb-pathrow{display:flex;align-items:center;gap:8px;padding:0;border-bottom:1px solid var(--dsw-alias-border-l1)}
 .pb-pathrow button{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;text-align:left;
@@ -1826,20 +1827,18 @@ window.__ModuleLoader__.load({
 				h('div', { key: 'reason', className: 'pb-summary-reason' }, formatStageReason(detail, tr)),
 			]);
 
-			const derivedCard = h('div', { key: 'derived', className: 'pb-card' }, [
-				h('div', { key: 'st', className: 'pb-st' }, tr('panel.derived')),
-				h('div', { key: 'kv', className: 'pb-kvlist' }, rows.map(([key, value], index) => h('div', {
-					key: `r${index}`, className: 'pb-kvrow',
-				}, [
-					h('span', { key: 'k', className: 'pb-k' }, key),
+			// Derived fields are meta, not content: a wrap-friendly strip across the
+			// top keeps them visible without spending a column on seven short pairs.
+			const derivedStrip = h('div', { key: 'derived', className: 'pb-strip' },
+				rows.map(([key, value], index) => h('div', { key: `r${index}`, className: 'pb-cell' }, [
+					h('span', { key: 'k', className: 'pb-cellk' }, key),
 					h('span', {
-						key: 'v', className: 'pb-v',
+						key: 'v', className: 'pb-cellv',
 						style: key === tr('panel.health') && tone !== ''
 							? { color: `var(--dsw-alias-state-${tone === 'error' ? 'error' : tone === 'warn' ? 'warn' : 'success'}-primary)` }
 							: {},
 					}, value),
-				]))),
-			]);
+				])));
 
 			const progressCard = h('div', { key: 'prog', className: 'pb-card' }, [
 				h('div', { key: 'st', className: 'pb-st' }, tr('panel.recent')),
@@ -1901,7 +1900,7 @@ window.__ModuleLoader__.load({
 			const detailTabs = h('div', { key: 'subtabs', className: 'pb-subtabs', role: 'tablist' }, [
 				...[
 					['content', tr('panel.tabContent'), (detail.recentProgress ?? []).length],
-					['facts', tr('panel.tabFacts'), null],
+					['files', tr('panel.tabFiles'), (detail.evidence ?? []).length],
 				].map(([key, label, count]) => h('button', {
 					key, type: 'button', role: 'tab', className: 'pb-subtab',
 					'data-on': String(detailTab === key), 'aria-selected': detailTab === key,
@@ -1911,18 +1910,13 @@ window.__ModuleLoader__.load({
 					: null])),
 			]);
 
+			// Each tab owns the full width. Splitting them into shared columns left
+			// one side empty on "content" and squeezed the file list on "facts".
 			const detailBody = [
 				summary,
+				derivedStrip,
 				detailTabs,
-				detailTab === 'facts'
-					? h('div', { key: 'facts', className: 'pb-dcols pb-factcols' }, [
-						h('div', { key: 'l', className: 'pb-colmain' }, [derivedCard]),
-						h('div', { key: 'r', className: 'pb-colside' }, [filesCard]),
-					])
-					: h('div', { key: 'content', className: 'pb-dcols' }, [
-						h('div', { key: 'l', className: 'pb-colmain' }, [headerCard, progressCard]),
-						h('div', { key: 'r', className: 'pb-colside' }, []),
-					]),
+				detailTab === 'files' ? filesCard : [headerCard, progressCard],
 			];
 			const body = viewing !== null
 				? [h(FileViewer, {
