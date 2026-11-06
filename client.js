@@ -175,6 +175,8 @@ window.__ModuleLoader__.load({
 			'disc.title': '沟通',
 			'panel.planFile': '计划文件',
 			'panel.evidenceCount': '证据文件（{n}）',
+			'panel.tabContent': '计划内容',
+			'panel.tabFacts': '字段与文件',
 			'action.showAllEvidence': '展开全部 {n} 个',
 			'action.showLessEvidence': '收起（只显示 {n} 个）',
 			'view.file': '查看',
@@ -217,6 +219,8 @@ window.__ModuleLoader__.load({
 			'disc.title': 'Conversation',
 			'panel.planFile': 'Plan file',
 			'panel.evidenceCount': 'Evidence files ({n})',
+			'panel.tabContent': 'Plan',
+			'panel.tabFacts': 'Fields & files',
 			'action.showAllEvidence': 'Show all {n}',
 			'action.showLessEvidence': 'Collapse to {n}',
 			'view.file': 'View',
@@ -543,6 +547,23 @@ window.__ModuleLoader__.load({
 .pb-dbody{flex:1;min-height:0;overflow:auto;padding:22px 26px 32px}
 
 /* --- summary: the one thing to read first --- */
+/* --- second-level tabs: underline style, clearly subordinate to the pills --- */
+.pb-subtabs{display:flex;gap:2px;flex-wrap:wrap;margin:0 0 16px;
+  border-bottom:1px solid var(--dsw-alias-border-l1)}
+.pb-subtab{font:inherit;font-size:12.5px;font-weight:500;background:none;border:0;cursor:pointer;
+  color:var(--dsw-alias-label-secondary);padding:8px 14px 9px;position:relative;
+  display:inline-flex;align-items:center;gap:6px;border-radius:7px 7px 0 0;transition:color .12s}
+.pb-subtab:hover{color:var(--dsw-alias-label-primary)}
+.pb-subtab[data-on='true']{color:var(--dsw-alias-brand-primary);font-weight:600}
+.pb-subtab[data-on='true']::after{content:'';position:absolute;left:10px;right:10px;bottom:-1px;
+  height:2px;border-radius:2px 2px 0 0;background:var(--dsw-alias-brand-primary)}
+.pb-subcount{font-size:10.5px;font-weight:600;background:var(--dsw-alias-bg-layer-2);
+  color:var(--dsw-alias-label-secondary);border-radius:999px;padding:0 6px;line-height:16px}
+.pb-subtab[data-on='true'] .pb-subcount{color:var(--dsw-alias-brand-primary)}
+/* Facts view: derived fields on the left, files on the right. */
+.pb-factcols{grid-template-columns:minmax(0,0.85fr) minmax(0,1.15fr)}
+@media(max-width:900px){.pb-factcols{grid-template-columns:1fr}}
+
 .pb-summary{padding:16px 18px;margin-bottom:20px;border-radius:12px;
   background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1)}
 .pb-summary-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -569,9 +590,9 @@ window.__ModuleLoader__.load({
 /* --- files --- */
 .pb-filegroup+.pb-filegroup{margin-top:16px;padding-top:14px;border-top:1px solid var(--dsw-alias-border-l1)}
 .pb-filelabel{font-size:11px;color:var(--dsw-alias-label-secondary);margin-bottom:6px;letter-spacing:.02em}
-.pb-pathrow{display:flex;align-items:flex-start;gap:8px}
+.pb-pathrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pb-pathrow+.pb-pathrow{margin-top:6px}
-.pb-pathrow .pb-openrow{flex:1;min-width:0;display:flex;align-items:center;gap:10px;font:inherit;
+.pb-pathrow .pb-openrow{flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:10px;font:inherit;
   text-align:left;background:var(--dsw-alias-bg-layer-2);border:1px solid transparent;border-radius:8px;
   color:var(--dsw-alias-label-primary);padding:9px 12px;cursor:pointer;transition:border-color .12s,background .12s}
 .pb-pathrow .pb-openrow:hover{border-color:var(--dsw-alias-brand-primary);
@@ -592,7 +613,7 @@ window.__ModuleLoader__.load({
 .pb-filetoggle{font:inherit;font-size:11px;font-weight:500;background:none;border:0;padding:2px 0;cursor:pointer;
   color:var(--dsw-alias-brand-primary);letter-spacing:0;text-transform:none;white-space:nowrap}
 .pb-filetoggle:hover{text-decoration:underline}
-.pb-files{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+.pb-files{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px}
 .pb-files .pb-pathrow{margin:0}
 .pb-files .pb-pathrow .pb-openrow{padding:8px 11px}
 .pb-files .pb-pathrow .pb-fname{font-size:11.5px}
@@ -1645,6 +1666,8 @@ window.__ModuleLoader__.load({
 			const closeRef = React.useRef(null);
 			const [copyState, setCopyState] = React.useState({ path: null, error: false });
 			const [tab, setTab] = React.useState('detail');
+			/** Which slice of the detail page is showing: the plan's words, or its facts. */
+			const [detailTab, setDetailTab] = React.useState('content');
 			/** `{ kind, name }` of the file open in the viewer, or null for the plain drawer. */
 			const [viewing, setViewing] = React.useState(null);
 			const [evidenceExpanded, setEvidenceExpanded] = React.useState(false);
@@ -1659,6 +1682,7 @@ window.__ModuleLoader__.load({
 			}, [detail?.slug]);
 			React.useEffect(() => {
 				setViewing(null);
+				setDetailTab('content');
 				setEvidenceExpanded(false);
 				setCopyState({ path: null, error: false });
 				// Missing counts leave the conversation signal alone; a real reply or a
@@ -1871,13 +1895,34 @@ window.__ModuleLoader__.load({
 				])
 				: null;
 
+			// The detail page is split rather than scrolled: "content" holds the plan's
+			// own words (long prose, dated progress), "facts" holds derived fields
+			// and files. Both are short enough to read without hunting.
+			const detailTabs = h('div', { key: 'subtabs', className: 'pb-subtabs', role: 'tablist' }, [
+				...[
+					['content', tr('panel.tabContent'), (detail.recentProgress ?? []).length],
+					['facts', tr('panel.tabFacts'), null],
+				].map(([key, label, count]) => h('button', {
+					key, type: 'button', role: 'tab', className: 'pb-subtab',
+					'data-on': String(detailTab === key), 'aria-selected': detailTab === key,
+					onClick: () => setDetailTab(key),
+				}, [label, count !== null && count > 0
+					? h('span', { key: 'c', className: 'pb-subcount' }, String(count))
+					: null])),
+			]);
+
 			const detailBody = [
 				summary,
-				h('div', { key: 'cols', className: 'pb-dcols' }, [
-					h('div', { key: 'l', className: 'pb-colmain' }, [headerCard, progressCard]),
-					h('div', { key: 'r', className: 'pb-colside' }, [derivedCard]),
-				]),
-				filesCard,
+				detailTabs,
+				detailTab === 'facts'
+					? h('div', { key: 'facts', className: 'pb-dcols pb-factcols' }, [
+						h('div', { key: 'l', className: 'pb-colmain' }, [derivedCard]),
+						h('div', { key: 'r', className: 'pb-colside' }, [filesCard]),
+					])
+					: h('div', { key: 'content', className: 'pb-dcols' }, [
+						h('div', { key: 'l', className: 'pb-colmain' }, [headerCard, progressCard]),
+						h('div', { key: 'r', className: 'pb-colside' }, []),
+					]),
 			];
 			const body = viewing !== null
 				? [h(FileViewer, {
