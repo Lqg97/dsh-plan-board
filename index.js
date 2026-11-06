@@ -31,6 +31,8 @@ export const WORKSPACES_ROUTE_PATH = '/plan-board/workspaces';
 export const DISCUSSION_ROUTE_PATH = '/plan-board/discussion';
 /** Cross-plan conversation search and the pending-reply inbox. */
 export const SEARCH_ROUTE_PATH = '/plan-board/search';
+/** Read-only viewer for one plan file or one evidence file. */
+export const FILE_ROUTE_PATH = '/plan-board/file';
 
 /** Services this plugin cannot work without. */
 export const inject = ['webServer', 'connection', 'workspaceRegistry'];
@@ -541,6 +543,97 @@ async function handleSearch(ctx, req, res) {
   }
 }
 
+/** Extensions the viewer will render as text. */
+const VIEWABLE_EXTENSIONS = new Set(['.md', '.txt', '.json', '.log', '.out', '.report', '.csv', '.yaml', '.yml', '']);
+/** Bytes served to the viewer; larger files are truncated with a notice. */
+const MAX_VIEW_BYTES = 512 * 1024;
+
+/**
+ * Resolve one viewable file inside a registered workspace.
+ *
+ * Both the plan file and every evidence entry are constrained twice: the path is
+ * built from scan output (never from a caller-supplied relative path), and the
+ * canonical result must still sit under the workspace's `doc/plans/` tree. A
+ * symlink pointing outside is therefore refused, not followed.
+ * @param {string} workspace - canonical workspace directory.
+ * @param {string} kind - `plan` or `evidence`.
+ * @param {string} slug - plan slug from the request.
+ * @param {string} name - evidence file name; ignored for `plan`.
+ * @returns {Promise<{ file: string, relative: string } | undefined>} resolved file.
+ */
+async function resolveViewable(workspace, kind, slug, name) {
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(slug)) return undefined;
+  const detail = await buildPlanDetail(workspace, slug);
+  if (detail === undefined) return undefined;
+  let relative;
+  if (kind === 'plan') {
+    relative = path.join(PLANS_DIR, detail.archived === true ? 'done' : '', detail.file);
+  } else {
+    // Evidence entries come from the scan, so a name that is not listed cannot
+    // be requested even if it exists on disk.
+    if (typeof name !== 'string' || name === '' || name.includes('/') || name.includes('\\')
+      || name.includes('..') || !(detail.evidence ?? []).includes(name)) {
+      return undefined;
+    }
+    relative = path.join(PLANS_DIR, 'evidence', slug, name);
+  }
+  const candidate = path.join(workspace, relative);
+  let canonical;
+  try {
+    canonical = await fs.realpath(candidate);
+  } catch {
+    return undefined;
+  }
+  const plansRoot = path.join(workspace, PLANS_DIR);
+  if (canonical !== plansRoot && !canonical.startsWith(plansRoot + path.sep)) return undefined;
+  const extension = path.extname(canonical).toLowerCase();
+  if (!VIEWABLE_EXTENSIONS.has(extension)) return undefined;
+  return { file: canonical, relative: relative.split(path.sep).join('/') };
+}
+
+/**
+ * Serve `GET /plan-board/file` — one plan or evidence file as text.
+ *
+ * The viewer is read-only and bounded: text files only, capped at
+ * MAX_VIEW_BYTES, and confined to the workspace's own `doc/plans/`.
+ * @param {import('@deepseek-ai/cordis').Context} ctx - plugin context.
+ * @param {import('node:http').IncomingMessage} req - request.
+ * @param {import('node:http').ServerResponse} res - response.
+ */
+async function handleFile(ctx, req, res) {
+  const workspace = await admitted(ctx, req, res);
+  if (workspace === undefined) return;
+  const kind = queryOf(req, 'kind') === 'evidence' ? 'evidence' : 'plan';
+  try {
+    const target = await resolveViewable(workspace, kind, queryOf(req, 'slug'), queryOf(req, 'name'));
+    if (target === undefined) {
+      sendJson(res, 404, { error: 'file-not-found' });
+      return;
+    }
+    const stat = await fs.stat(target.file);
+    const handle = await fs.open(target.file, 'r');
+    try {
+      const length = Math.min(stat.size, MAX_VIEW_BYTES);
+      const buffer = Buffer.alloc(length);
+      const { bytesRead } = await handle.read(buffer, 0, length, 0);
+      sendJson(res, 200, {
+        file: target.relative,
+        size: stat.size,
+        truncated: stat.size > MAX_VIEW_BYTES,
+        mtime: stat.mtime.toISOString(),
+        text: buffer.subarray(0, bytesRead).toString('utf8'),
+      });
+    } finally {
+      await handle.close();
+    }
+  } catch (error) {
+    sendJson(res, 500, {
+      error: 'file-failed',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 /**
  * Register the read-only routes and the one write route that keeps the
  * conversation (never the plans) up to date.
@@ -554,6 +647,7 @@ export function apply(ctx) {
     [CADENCE_ROUTE_PATH, handleCadence],
     [DISCUSSION_ROUTE_PATH, handleDiscussion],
     [SEARCH_ROUTE_PATH, handleSearch],
+    [FILE_ROUTE_PATH, handleFile],
   ];
   for (const [routePath, handler] of routes) {
     ctx.effect(

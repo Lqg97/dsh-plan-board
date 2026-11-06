@@ -124,6 +124,7 @@ test('all routes register on apply', () => {
     '/plan-board/board',
     '/plan-board/cadence',
     '/plan-board/discussion',
+    '/plan-board/file',
     '/plan-board/plan',
     '/plan-board/search',
     '/plan-board/workspaces',
@@ -272,6 +273,37 @@ test('the discussion route needs a POST, a known plan and an action', async (t) 
 
   const refused = await call(discussion, '/plan-board/discussion?path=/etc&slug=x', 'POST');
   assert.equal(refused.statusCode, 403);
+});
+
+test('the file viewer serves plan and evidence text but refuses anything outside the plan tree', async (t) => {
+  if (!fs.existsSync(path.join(WORKSPACE, 'doc/plans'))) {
+    t.skip(`no doc/plans under ${WORKSPACE}`);
+    return;
+  }
+  const liveDir = path.join(WORKSPACE, 'doc/plans');
+  const slug = fs.readdirSync(liveDir).find((name) => name.endsWith('.md'))?.replace(/\.md$/, '');
+  const { ctx, routes } = makeContext([WORKSPACE]);
+  plugin.apply(ctx);
+  const file = routes.get('/plan-board/file');
+  const base = `/plan-board/file?path=${encodeURIComponent(WORKSPACE)}`;
+
+  const plan = await call(file, `${base}&kind=plan&slug=${encodeURIComponent(slug)}`);
+  assert.equal(plan.statusCode, 200);
+  assert.equal(plan.json.file, `doc/plans/${slug}.md`);
+  assert.ok(plan.json.text.length > 0, 'the plan body is returned as text');
+  assert.equal(plan.json.truncated, false);
+
+  // Traversal and unlisted names are answered as "not found", never resolved.
+  for (const hostile of ['../../../../etc/passwd', '../../../package.json', 'not-in-scan.md', '']) {
+    const res = await call(file, `${base}&kind=evidence&slug=${encodeURIComponent(slug)}&name=${encodeURIComponent(hostile)}`);
+    assert.equal(res.statusCode, 404, `evidence name ${JSON.stringify(hostile)}`);
+  }
+
+  const unknownPlan = await call(file, `${base}&kind=plan&slug=no-such-plan`);
+  assert.equal(unknownPlan.statusCode, 404);
+
+  const outside = await call(file, '/plan-board/file?path=/etc&kind=plan&slug=x');
+  assert.equal(outside.statusCode, 403);
 });
 
 test('the search route answers with the index availability, never an error', async (t) => {

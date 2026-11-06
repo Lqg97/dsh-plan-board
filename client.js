@@ -169,6 +169,13 @@ window.__ModuleLoader__.load({
 			'disc.tabDetail': '详情',
 			'disc.tabDiscussion': '沟通',
 			'disc.title': '沟通',
+			'panel.planFile': '计划文件',
+			'view.file': '查看',
+			'view.fileOpen': '查看内容',
+			'view.fileLoading': '读取中…',
+			'view.fileTruncated': '文件较大，仅显示前 {n} KB',
+			'view.copyPath': '复制路径',
+			'view.backToPlan': '返回详情',
 			'disc.hint': '留言先记录在看板；「发送并唤醒」才会把待投递留言送进该计划的 DSH 会话。',
 			'disc.openSession': '打开会话 ↗',
 			'disc.session': '关联会话 {id}',
@@ -201,6 +208,13 @@ window.__ModuleLoader__.load({
 			'disc.tabDetail': 'Details',
 			'disc.tabDiscussion': 'Conversation',
 			'disc.title': 'Conversation',
+			'panel.planFile': 'Plan file',
+			'view.file': 'View',
+			'view.fileOpen': 'View content',
+			'view.fileLoading': 'Loading…',
+			'view.fileTruncated': 'Large file; showing the first {n} KB',
+			'view.copyPath': 'Copy path',
+			'view.backToPlan': 'Back to details',
 			'disc.hint': 'Messages are kept on the board first; "Send & wake" is what delivers them to the plan\'s DSH session.',
 			'disc.openSession': 'Open session ↗',
 			'disc.session': 'Session {id}',
@@ -478,17 +492,38 @@ window.__ModuleLoader__.load({
 .pb-note{border-left:2px solid var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-1);
   border-radius:0 8px 8px 0;padding:8px 12px;font-size:12px;color:var(--dsw-alias-label-secondary);margin:8px 0}
 .pb-note b{color:var(--dsw-alias-label-primary)}
-.pb-drawer{position:fixed;top:0;right:0;bottom:0;width:min(470px,92vw);z-index:40;
+.pb-drawer{position:fixed;z-index:40;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:min(860px,92vw);max-height:min(88vh,900px);
   display:flex;flex-direction:column;background:var(--dsw-alias-bg-overlay);
-  border-left:1px solid var(--dsw-alias-border-l2);box-shadow:0 0 30px #0006}
-.pb-dhead{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;
-  border-bottom:1px solid var(--dsw-alias-border-l1)}
+  border:1px solid var(--dsw-alias-border-l2);border-radius:14px;overflow:hidden;
+  box-shadow:0 24px 60px #0007,0 2px 8px #0003}
+.pb-drawer[data-mode='viewer']{width:min(1020px,94vw);height:min(86vh,860px);max-height:86vh}
+.pb-dhead{display:flex;align-items:flex-start;gap:10px;padding:15px 20px 13px;
+  border-bottom:1px solid var(--dsw-alias-border-l1);flex:none}
 .pb-dhead .pb-dt{font-size:14px;font-weight:640;line-height:1.4}
 .pb-dhead .pb-ds{font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:10.5px;
   color:var(--dsw-alias-label-secondary);margin-top:3px}
 .pb-dx{margin-left:auto;background:none;border:0;color:var(--dsw-alias-label-secondary);font-size:18px;
   line-height:1;cursor:pointer;padding:0 4px}
-.pb-dbody{flex:1;overflow:auto;padding:14px 16px 40px}
+.pb-dbody{flex:1;min-height:0;overflow:auto;padding:18px 22px 28px}
+.pb-summary{padding:12px 14px;margin-bottom:18px;border-radius:10px;
+  background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1)}
+.pb-summary-badges{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.pb-summary-reason{margin-top:8px;font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.6}
+.pb-kvrow{display:flex;justify-content:space-between;gap:14px;padding:5px 0;
+  border-bottom:1px solid var(--dsw-alias-border-l1);font-size:12.5px}
+.pb-kvrow:last-child{border-bottom:0}
+.pb-kvrow .pb-k{color:var(--dsw-alias-label-secondary);flex:none}
+.pb-kvrow .pb-v{text-align:right;min-width:0;overflow-wrap:anywhere}
+.pb-filegroup{margin-bottom:12px}
+.pb-filegroup:last-child{margin-bottom:0}
+.pb-filelabel{font-size:11px;color:var(--dsw-alias-label-secondary);margin-bottom:2px}
+.pb-dcols{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:0 30px;align-items:start}
+@media(max-width:820px){.pb-dcols{grid-template-columns:1fr}}
+.pb-colside .pb-sec{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);
+  border-radius:10px;padding:12px 14px}
+.pb-sec+.pb-sec{margin-top:16px}
+.pb-st{display:flex;align-items:center;gap:8px}
 .pb-sec{margin-bottom:18px}
 .pb-sec .pb-st{font-size:11px;color:var(--dsw-alias-label-secondary);letter-spacing:.06em;
   text-transform:uppercase;margin-bottom:7px}
@@ -503,11 +538,24 @@ window.__ModuleLoader__.load({
 .pb-dline .pb-code{font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:11px}
 .pb-dline .pb-d{font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:10.5px;
   color:var(--dsw-alias-brand-primary);margin-right:8px}
-.pb-pathrow{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--dsw-alias-border-l1)}
-.pb-pathrow code{flex:1;min-width:0;overflow-wrap:anywhere;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.pb-pathrow{display:flex;align-items:center;gap:8px;padding:0;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.pb-pathrow button{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;text-align:left;
+  background:none;border:0;color:var(--dsw-alias-label-secondary);padding:7px 0;cursor:pointer}
+.pb-pathrow button:hover{color:var(--dsw-alias-brand-primary)}
+.pb-pathrow .pb-fname{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px;
+  font-family:var(--ds-font-family-code,ui-monospace,monospace)}
+.pb-pathrow .pb-open{flex:none;font-size:10.5px;color:var(--dsw-alias-brand-primary);opacity:0}
+.pb-pathrow button:hover .pb-open{opacity:1}
 .pb-copy{flex:none;font:inherit;font-size:10.5px;border:1px solid var(--dsw-alias-border-l2);border-radius:5px;
-  background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:2px 7px;cursor:pointer}
+  background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:3px 8px;cursor:pointer}
 .pb-copy[data-error='true']{color:var(--dsw-alias-state-error-primary)}
+.pb-fileview{display:flex;flex-direction:column;height:100%;min-height:0}
+.pb-filebar{display:flex;align-items:center;gap:10px;padding:4px 0 10px;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.pb-filebar code{flex:1;min-width:0;font-size:11.5px;color:var(--dsw-alias-label-secondary);
+  font-family:var(--ds-font-family-code,ui-monospace,monospace);overflow-wrap:anywhere}
+.pb-filetext{margin:0;padding:12px 0 0;overflow:auto;flex:1;min-height:0;
+  font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:12px;line-height:1.7;
+  white-space:pre-wrap;overflow-wrap:anywhere;color:var(--dsw-alias-label-primary)}
 .pb-mrl{display:flex;gap:7px;flex-wrap:wrap}
 .pb-mrl a{font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:11px;
   color:var(--dsw-alias-brand-primary);text-decoration:none;background:var(--dsw-alias-bg-layer-2);
@@ -1331,6 +1379,57 @@ window.__ModuleLoader__.load({
 		}
 
 		/**
+		 * Read-only viewer for one plan or evidence file.
+		 *
+		 * Replaces "copy this path and go find it yourself": the content is one
+		 * click away, served by the host's confined `/plan-board/file` route, and
+		 * the path is still copyable for anyone who needs it in a terminal.
+		 * @param {{ workspace: string, slug: string, kind: string, name: string, tr: Function, onClose: Function }} props - inputs.
+		 * @returns {import('react').ReactElement} viewer body.
+		 */
+		function FileViewer({ workspace, slug, kind, name, tr, onClose }) {
+			const [state, setState] = React.useState({ loading: true, data: null, error: null });
+			const requestRef = React.useRef(0);
+
+			React.useEffect(() => {
+				const request = ++requestRef.current;
+				const params = { kind, slug, ...(kind === 'evidence' ? { name } : {}) };
+				fetchRoute('file', workspace, params)
+					.then((payload) => {
+						if (request === requestRef.current) setState({ loading: false, data: payload, error: null });
+					})
+					.catch((cause) => {
+						if (request === requestRef.current) {
+							setState({ loading: false, data: null, error: cause instanceof Error ? cause.message : String(cause) });
+						}
+					});
+				return () => {
+					requestRef.current += 1;
+				};
+			}, [workspace, slug, kind, name]);
+
+			if (state.loading) {
+				return h('div', { className: 'pb-loading' }, tr('view.fileLoading'));
+			}
+			if (state.error !== null) {
+				return h('div', { className: 'pb-error' }, state.error);
+			}
+			const data = state.data;
+			return h('div', { className: 'pb-fileview' }, [
+				h('div', { key: 'bar', className: 'pb-filebar' }, [
+					h('code', { key: 'p', title: data.file }, data.file),
+					h('button', {
+						key: 'b', type: 'button', className: 'pb-copy', onClick: onClose,
+					}, tr('view.backToPlan')),
+				]),
+				data.truncated === true
+					? h('div', { key: 't', className: 'pb-note' }, tr('view.fileTruncated', { n: 512 }))
+					: null,
+				h('pre', { key: 'text', className: 'pb-filetext' }, data.text),
+			]);
+		}
+
+		/**
 		 * Cross-plan conversation search backed by the derived SQLite index.
 		 *
 		 * This is the one view the JSON store cannot serve cheaply: hits are
@@ -1461,6 +1560,8 @@ window.__ModuleLoader__.load({
 			const closeRef = React.useRef(null);
 			const [copyState, setCopyState] = React.useState({ path: null, error: false });
 			const [tab, setTab] = React.useState('detail');
+			/** `{ kind, name }` of the file open in the viewer, or null for the plain drawer. */
+			const [viewing, setViewing] = React.useState(null);
 			const [pending, setPending] = React.useState({ count: 0, running: false });
 			// The panel owns a new closure on every render, so a dependency on it would
 			// re-fetch the conversation in a loop; the slug is what actually changes.
@@ -1471,6 +1572,7 @@ window.__ModuleLoader__.load({
 				reportRef.current?.(detail?.slug ?? '', { pending: count, running });
 			}, [detail?.slug]);
 			React.useEffect(() => {
+				setViewing(null);
 				setCopyState({ path: null, error: false });
 				// Missing counts leave the conversation signal alone; a real reply or a
 				// queued comment always repaints it.
@@ -1511,8 +1613,9 @@ window.__ModuleLoader__.load({
 					first.focus();
 				}
 			};
-			const frame = (title, slug, body, controls) => h('div', {
+			const frame = (title, slug, body, controls, mode) => h('div', {
 				className: 'pb-drawer', role: 'dialog', 'aria-modal': 'true',
+				'data-mode': mode ?? 'detail',
 				'aria-labelledby': 'pb-drawer-title', onKeyDown: trapFocus,
 			}, [
 				h('div', { key: 'head', className: 'pb-dhead' }, [
@@ -1546,14 +1649,25 @@ window.__ModuleLoader__.load({
 					setCopyState({ path, error: true });
 				}
 			};
-			const pathRow = (path) => h('div', { key: path, className: 'pb-pathrow' }, [
-				h('code', { key: 'p', title: path }, path),
+			/**
+			 * One clickable file row: the name opens the viewer, the small button
+			 * copies the path for anyone who wants it in a terminal.
+			 */
+			const pathRow = (path, view) => h('div', { key: path, className: 'pb-pathrow' }, [
 				h('button', {
-					key: 'c', type: 'button', className: 'pb-copy', onClick: () => copyPath(path),
+					key: 'v', type: 'button', className: 'pb-openrow', title: tr('view.fileOpen'),
+					onClick: () => setViewing(view),
+				}, [
+					h('span', { key: 'n', className: 'pb-fname' }, path.split('/').pop()),
+					h('span', { key: 'o', className: 'pb-open' }, tr('view.file')),
+				]),
+				h('button', {
+					key: 'c', type: 'button', className: 'pb-copy', title: tr('view.copyPath'),
+					onClick: () => copyPath(path),
 					'data-error': String(copyState.error && copyState.path === path),
 				}, copyState.path === path
 					? tr(copyState.error ? 'action.copyFailed' : 'action.copied')
-					: tr('action.copy')),
+					: tr('view.copyPath')),
 			]);
 			const tone = healthTone(detail.health);
 			const mismatch = detail.headerMismatch === true && typeof detail.headerLag === 'number'
@@ -1573,17 +1687,67 @@ window.__ModuleLoader__.load({
 			];
 			if (mismatch !== null) rows.push([tr('panel.mismatch'), mismatch]);
 			const planPath = `doc/plans/${detail.file}`;
-			const detailBody = [
-				h('div', { key: 'derived', className: 'pb-sec' }, [
-					h('div', { key: 'st', className: 'pb-st' }, tr('panel.derived')),
-					h('div', { key: 'kv', className: 'pb-dkv' }, rows.flatMap(([key, value], index) => [
-						h('div', { key: `k${index}`, className: 'pb-k' }, key),
-						h('div', {
-							key: `v${index}`,
-							style: index === 2 && tone !== '' ? { color: `var(--dsw-alias-state-${tone === 'error' ? 'error' : tone === 'warn' ? 'warn' : 'success'}-primary)` } : {},
-						}, value),
-					])),
+			// Layout: a summary strip across the top (what this plan is and where it
+			// stands), then two columns — the plan's own words on the left, the
+			// derived/operational facts and files on the right. On a narrow window
+			// the grid collapses to one column.
+			const summary = h('div', { key: 'summary', className: 'pb-summary' }, [
+				h('div', { key: 'badges', className: 'pb-summary-badges' }, [
+					h('span', {
+						key: 'stage', className: 'pb-badge', 'data-tone': 'brand',
+					}, tr(`stage.${detail.stage}`)),
+					h('span', {
+						key: 'health',
+						className: 'pb-badge',
+						'data-tone': detail.archived === true ? '' : tone,
+					}, tr('panel.healthValue', {
+						health: tr(`health.${detail.health}`), n: detail.idleDays ?? '?',
+					})),
+					(detail.mergeRequests ?? []).map((merge, index) => h('a', {
+						key: `m${index}`, className: 'pb-badge', 'data-tone': 'brand',
+						href: `https://git.woa.com/${merge.repo}/-/merge_requests/${merge.num}`,
+						target: '_blank', rel: 'noreferrer', style: { textDecoration: 'none' },
+					}, `!${merge.num}`)),
+					mismatch !== null
+						? h('span', { key: 'mm', className: 'pb-badge', 'data-tone': 'warn' }, tr('card.mismatch'))
+						: null,
 				]),
+				h('div', { key: 'reason', className: 'pb-summary-reason' }, formatStageReason(detail, tr)),
+			]);
+
+			const derivedCard = h('div', { key: 'derived', className: 'pb-sec' }, [
+				h('div', { key: 'st', className: 'pb-st' }, tr('panel.derived')),
+				h('div', { key: 'kv', className: 'pb-dkv' }, rows.map(([key, value], index) => h('div', {
+					key: `r${index}`, className: 'pb-kvrow',
+				}, [
+					h('span', { key: 'k', className: 'pb-k' }, key),
+					h('span', {
+						key: 'v', className: 'pb-v',
+						style: key === tr('panel.health') && tone !== ''
+							? { color: `var(--dsw-alias-state-${tone === 'error' ? 'error' : tone === 'warn' ? 'warn' : 'success'}-primary)` }
+							: {},
+					}, value),
+				]))),
+			]);
+
+			const filesCard = h('div', { key: 'files', className: 'pb-sec' }, [
+				h('div', { key: 'st', className: 'pb-st' }, tr('panel.files')),
+				h('div', { key: 'plan', className: 'pb-filegroup' }, [
+					h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.planFile')),
+					pathRow(planPath, { kind: 'plan', name: detail.file }),
+				]),
+				detail.evidenceDir !== null
+					? h('div', { key: 'evidence', className: 'pb-filegroup' }, [
+						h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.evidence')),
+						...(detail.evidence ?? []).map((entry) => pathRow(
+							`${detail.evidenceDir}/${entry}`,
+							{ kind: 'evidence', name: entry },
+						)),
+					])
+					: null,
+			]);
+
+			const leftColumn = [
 				(detail.headerLines ?? []).length > 0
 					? h('div', { key: 'block', className: 'pb-sec' }, [
 						h('div', { key: 'st', className: 'pb-st' }, tr('panel.headerBlock')),
@@ -1592,16 +1756,6 @@ window.__ModuleLoader__.load({
 						}, inlineMarkdown(line))),
 					])
 					: null,
-				h('div', { key: 'mr', className: 'pb-sec' }, [
-					h('div', { key: 'st', className: 'pb-st' }, tr('panel.mr')),
-					(detail.mergeRequests ?? []).length === 0
-						? h('div', { key: 'none', className: 'pb-dline' }, tr('panel.noMr'))
-						: h('div', { key: 'list', className: 'pb-mrl' }, detail.mergeRequests.map((merge, index) =>
-							h('a', {
-								key: `m${index}`, href: `https://git.woa.com/${merge.repo}/-/merge_requests/${merge.num}`,
-								target: '_blank', rel: 'noreferrer',
-							}, `${merge.repo.split('/').pop()} !${merge.num}`))),
-				]),
 				h('div', { key: 'prog', className: 'pb-sec' }, [
 					h('div', { key: 'st', className: 'pb-st' }, tr('panel.recent')),
 					(detail.recentProgress ?? []).length === 0
@@ -1610,28 +1764,47 @@ window.__ModuleLoader__.load({
 							key: `p${index}`, className: 'pb-dline',
 						}, [h('span', { key: 'd', className: 'pb-d' }, entry.date), ...inlineMarkdown(entry.heading)])),
 				]),
-				h('div', { key: 'files', className: 'pb-sec' }, [
-					h('div', { key: 'st', className: 'pb-st' }, tr('panel.files')),
-					pathRow(planPath),
-					detail.evidenceDir !== null
-						? h('div', { key: 'evidence' }, [
-							h('div', { key: 'label', className: 'pb-hint', style: { marginTop: '10px' } }, tr('panel.evidence')),
-							...(detail.evidence ?? []).map((entry) => pathRow(`${detail.evidenceDir}/${entry}`)),
-						])
-						: null,
+			];
+
+			const rightColumn = [
+				derivedCard,
+				filesCard,
+			];
+
+			const detailBody = [
+				summary,
+				h('div', { key: 'cols', className: 'pb-dcols' }, [
+					h('div', { key: 'l', className: 'pb-colmain' }, leftColumn),
+					h('div', { key: 'r', className: 'pb-colside' }, rightColumn),
 				]),
 			];
-			const body = tab === 'discussion'
-				? [h(DiscussionPanel, {
-					key: 'discussion',
-					detail,
+			const body = viewing !== null
+				? [h(FileViewer, {
+					key: `v-${viewing.kind}-${viewing.name}`,
 					workspace,
+					slug: detail.slug,
+					kind: viewing.kind,
+					name: viewing.name,
 					tr,
-					onPendingChange: reportPending,
-					onSession,
+					onClose: () => setViewing(null),
 				})]
-				: detailBody;
-			return frame(detail.title, detail.slug, body, tabBar);
+				: tab === 'discussion'
+					? [h(DiscussionPanel, {
+						key: 'discussion',
+						detail,
+						workspace,
+						tr,
+						onPendingChange: reportPending,
+						onSession,
+					})]
+					: detailBody;
+			return frame(
+				viewing === null ? detail.title : viewing.name,
+				viewing === null ? detail.slug : `${detail.slug} · ${viewing.kind}`,
+				body,
+				tabBar,
+				viewing === null ? 'detail' : 'viewer',
+			);
 		}
 
 		/**
