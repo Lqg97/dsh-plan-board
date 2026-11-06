@@ -36,6 +36,8 @@ window.__ModuleLoader__.load({
 
 		/** Number of archived cards shown before the reader explicitly expands all. */
 		const ARCHIVED_SHOWN = 6;
+		/** Evidence files shown before the reader expands the grid. */
+		const EVIDENCE_PREVIEW = 6;
 
 		/** Column accent colours; the only literal colours in the file, used as dots. */
 		const STAGE_HUE = {
@@ -170,6 +172,9 @@ window.__ModuleLoader__.load({
 			'disc.tabDiscussion': '沟通',
 			'disc.title': '沟通',
 			'panel.planFile': '计划文件',
+			'panel.evidenceCount': '证据文件（{n}）',
+			'action.showAllEvidence': '展开全部 {n} 个',
+			'action.showLessEvidence': '收起（只显示 {n} 个）',
 			'view.file': '查看',
 			'view.fileOpen': '查看内容',
 			'view.fileLoading': '读取中…',
@@ -209,6 +214,9 @@ window.__ModuleLoader__.load({
 			'disc.tabDiscussion': 'Conversation',
 			'disc.title': 'Conversation',
 			'panel.planFile': 'Plan file',
+			'panel.evidenceCount': 'Evidence files ({n})',
+			'action.showAllEvidence': 'Show all {n}',
+			'action.showLessEvidence': 'Collapse to {n}',
 			'view.file': 'View',
 			'view.fileOpen': 'View content',
 			'view.fileLoading': 'Loading…',
@@ -518,7 +526,8 @@ window.__ModuleLoader__.load({
 .pb-card{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);
   border-radius:12px;padding:16px 18px;margin-bottom:16px}
 .pb-card:last-child{margin-bottom:0}
-.pb-card > .pb-st{font-size:11px;color:var(--dsw-alias-label-secondary);letter-spacing:.06em;
+.pb-card > .pb-st{display:flex;align-items:center;gap:10px;
+  font-size:11px;color:var(--dsw-alias-label-secondary);letter-spacing:.06em;
   text-transform:uppercase;font-weight:600;margin-bottom:12px}
 
 /* --- derived facts: label/value rows, never squeezed --- */
@@ -551,6 +560,16 @@ window.__ModuleLoader__.load({
 .pb-copy[data-error='true']{color:var(--dsw-alias-state-error-primary)}
 
 /* --- columns --- */
+/* --- files: a wide grid of chips, not a tall list in a narrow rail --- */
+.pb-filescard .pb-filetoggle{margin-left:auto}
+.pb-filetoggle{font:inherit;font-size:11px;font-weight:500;background:none;border:0;padding:2px 0;cursor:pointer;
+  color:var(--dsw-alias-brand-primary);letter-spacing:0;text-transform:none;white-space:nowrap}
+.pb-filetoggle:hover{text-decoration:underline}
+.pb-files{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:8px}
+.pb-files .pb-pathrow{margin:0}
+.pb-files .pb-pathrow .pb-openrow{padding:8px 11px}
+.pb-files .pb-pathrow .pb-fname{font-size:11.5px}
+.pb-filescard .pb-filegroup+.pb-filegroup{margin-top:14px;padding-top:12px}
 .pb-dcols{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:start}
 .pb-colmain,.pb-colside{display:flex;flex-direction:column;min-width:0}
 @media(max-width:900px){.pb-dcols{grid-template-columns:1fr}}
@@ -1601,6 +1620,7 @@ window.__ModuleLoader__.load({
 			const [tab, setTab] = React.useState('detail');
 			/** `{ kind, name }` of the file open in the viewer, or null for the plain drawer. */
 			const [viewing, setViewing] = React.useState(null);
+			const [evidenceExpanded, setEvidenceExpanded] = React.useState(false);
 			const [pending, setPending] = React.useState({ count: 0, running: false });
 			// The panel owns a new closure on every render, so a dependency on it would
 			// re-fetch the conversation in a loop; the slug is what actually changes.
@@ -1612,6 +1632,7 @@ window.__ModuleLoader__.load({
 			}, [detail?.slug]);
 			React.useEffect(() => {
 				setViewing(null);
+				setEvidenceExpanded(false);
 				setCopyState({ path: null, error: false });
 				// Missing counts leave the conversation signal alone; a real reply or a
 				// queued comment always repaints it.
@@ -1769,32 +1790,6 @@ window.__ModuleLoader__.load({
 				]))),
 			]);
 
-			const filesCard = h('div', { key: 'files', className: 'pb-card' }, [
-				h('div', { key: 'st', className: 'pb-st' }, tr('panel.files')),
-				h('div', { key: 'plan', className: 'pb-filegroup' }, [
-					h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.planFile')),
-					pathRow(planPath, { kind: 'plan', name: detail.file }),
-				]),
-				detail.evidenceDir !== null
-					? h('div', { key: 'evidence', className: 'pb-filegroup' }, [
-						h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.evidence')),
-						...(detail.evidence ?? []).map((entry) => pathRow(
-							`${detail.evidenceDir}/${entry}`,
-							{ kind: 'evidence', name: entry },
-						)),
-					])
-					: null,
-			]);
-
-			const headerCard = (detail.headerLines ?? []).length > 0
-				? h('div', { key: 'block', className: 'pb-card' }, [
-					h('div', { key: 'st', className: 'pb-st' }, tr('panel.headerBlock')),
-					h('div', { key: 'lines', className: 'pb-prose' }, detail.headerLines.map((line, index) => h('p', {
-						key: `l${index}`, className: 'pb-para',
-					}, inlineMarkdown(line)))),
-				])
-				: null;
-
 			const progressCard = h('div', { key: 'prog', className: 'pb-card' }, [
 				h('div', { key: 'st', className: 'pb-st' }, tr('panel.recent')),
 				(detail.recentProgress ?? []).length === 0
@@ -1808,12 +1803,54 @@ window.__ModuleLoader__.load({
 						]))),
 			]);
 
+			// Files span both columns: a narrow rail turns every long evidence file
+			// name into three wrapped lines. A wide grid of chips reads far better.
+			const evidence = detail.evidence ?? [];
+			const shownEvidence = evidenceExpanded ? evidence : evidence.slice(0, EVIDENCE_PREVIEW);
+			const filesCard = h('div', { key: 'files', className: 'pb-card pb-filescard' }, [
+				h('div', { key: 'st', className: 'pb-st' }, [
+					h('span', { key: 't' }, tr('panel.files')),
+					evidence.length > EVIDENCE_PREVIEW
+						? h('button', {
+							key: 'x', type: 'button', className: 'pb-filetoggle',
+							'onClick': () => setEvidenceExpanded((value) => !value),
+							'aria-expanded': Boolean(evidenceExpanded),
+						}, evidenceExpanded
+							? tr('action.showLessEvidence', { n: EVIDENCE_PREVIEW })
+							: tr('action.showAllEvidence', { n: evidence.length }))
+						: null,
+				]),
+				h('div', { key: 'plan', className: 'pb-filegroup' }, [
+					h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.planFile')),
+					pathRow(planPath, { kind: 'plan', name: detail.file }),
+				]),
+				evidence.length > 0
+					? h('div', { key: 'evidence', className: 'pb-filegroup' }, [
+						h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.evidenceCount', { n: evidence.length })),
+						h('div', { key: 'grid', className: 'pb-files' }, shownEvidence.map((entry) => pathRow(
+							`${detail.evidenceDir}/${entry}`,
+							{ kind: 'evidence', name: entry },
+						))),
+					])
+					: null,
+			]);
+
+			const headerCard = (detail.headerLines ?? []).length > 0
+				? h('div', { key: 'block', className: 'pb-card' }, [
+					h('div', { key: 'st', className: 'pb-st' }, tr('panel.headerBlock')),
+					h('div', { key: 'lines', className: 'pb-prose' }, detail.headerLines.map((line, index) => h('p', {
+						key: `l${index}`, className: 'pb-para',
+					}, inlineMarkdown(line)))),
+				])
+				: null;
+
 			const detailBody = [
 				summary,
 				h('div', { key: 'cols', className: 'pb-dcols' }, [
 					h('div', { key: 'l', className: 'pb-colmain' }, [headerCard, progressCard]),
-					h('div', { key: 'r', className: 'pb-colside' }, [derivedCard, filesCard]),
+					h('div', { key: 'r', className: 'pb-colside' }, [derivedCard]),
 				]),
+				filesCard,
 			];
 			const body = viewing !== null
 				? [h(FileViewer, {
