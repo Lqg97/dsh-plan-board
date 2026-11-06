@@ -145,7 +145,7 @@ window.__ModuleLoader__.load({
 			'panel.headerBlock': '文件头状态行',
 			'panel.mr': 'MR',
 			'panel.recent': '最近 progress',
-			'panel.files': '文件位置',
+			'panel.files': '证据与计划文件',
 			'panel.noMr': '该计划文件里没有 MR 链接',
 			'panel.noProgress': '没有 progress.md，或还没有带日期的条目',
 			'panel.evidence': '证据目录',
@@ -178,7 +178,8 @@ window.__ModuleLoader__.load({
 			'panel.planFile': '计划文件',
 			'panel.evidenceCount': '证据文件（{n}）',
 			'panel.tabContent': '计划内容',
-			'panel.tabFiles': '文件',
+			'panel.tabEvidence': '证据列表',
+			'panel.tabProgress': '最近进展',
 			'action.prevPage': '上一页',
 			'action.nextPage': '下一页',
 			'action.pageInfo': '第 {page}/{total} 页 · {from}–{to}，共 {n} 个',
@@ -225,7 +226,8 @@ window.__ModuleLoader__.load({
 			'panel.planFile': 'Plan file',
 			'panel.evidenceCount': 'Evidence files ({n})',
 			'panel.tabContent': 'Plan',
-			'panel.tabFiles': 'Files',
+			'panel.tabEvidence': 'Evidence',
+			'panel.tabProgress': 'Recent progress',
 			'action.prevPage': 'Previous page',
 			'action.nextPage': 'Next page',
 			'action.pageInfo': 'Page {page}/{total} · {from}–{to} of {n}',
@@ -357,7 +359,7 @@ window.__ModuleLoader__.load({
 			'panel.headerBlock': 'Status block',
 			'panel.mr': 'MR',
 			'panel.recent': 'Recent progress',
-			'panel.files': 'Files',
+			'panel.files': 'Evidence & plan file',
 			'panel.noMr': 'No MR link in this plan file',
 			'panel.noProgress': 'No progress.md, or no dated entries yet',
 			'panel.evidence': 'Evidence',
@@ -2009,8 +2011,9 @@ window.__ModuleLoader__.load({
 			// and files. Both are short enough to read without hunting.
 			const detailTabs = h('div', { key: 'subtabs', className: 'pb-subtabs', role: 'tablist' }, [
 				...[
-					['content', tr('panel.tabContent'), (detail.recentProgress ?? []).length],
-					['files', tr('panel.tabFiles'), (detail.evidence ?? []).length],
+					['content', tr('panel.tabContent'), null],
+					['progress', tr('panel.tabProgress'), (detail.recentProgress ?? []).length],
+					['evidence', tr('panel.tabEvidence'), (detail.evidence ?? []).length],
 				].map(([key, label, count]) => h('button', {
 					key, type: 'button', role: 'tab', className: 'pb-subtab',
 					'data-on': String(detailTab === key), 'aria-selected': detailTab === key,
@@ -2026,7 +2029,11 @@ window.__ModuleLoader__.load({
 				summary,
 				derivedStrip,
 				detailTabs,
-				detailTab === 'files' ? filesCard : [headerCard, progressCard],
+				detailTab === 'progress'
+					? progressCard
+					: detailTab === 'evidence'
+						? filesCard
+						: headerCard,
 			];
 			const body = viewing !== null
 				? [h(FileViewer, {
