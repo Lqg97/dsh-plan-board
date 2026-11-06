@@ -505,39 +505,56 @@ window.__ModuleLoader__.load({
   color:var(--dsw-alias-label-secondary);margin-top:3px}
 .pb-dx{margin-left:auto;background:none;border:0;color:var(--dsw-alias-label-secondary);font-size:18px;
   line-height:1;cursor:pointer;padding:0 4px}
-.pb-dbody{flex:1;min-height:0;overflow:auto;padding:18px 22px 28px}
-.pb-summary{padding:12px 14px;margin-bottom:18px;border-radius:10px;
+.pb-dbody{flex:1;min-height:0;overflow:auto;padding:22px 26px 32px}
+
+/* --- summary: the one thing to read first --- */
+.pb-summary{padding:16px 18px;margin-bottom:20px;border-radius:12px;
   background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1)}
-.pb-summary-badges{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
-.pb-summary-reason{margin-top:8px;font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.6}
-.pb-kvrow{display:flex;justify-content:space-between;gap:14px;padding:5px 0;
-  border-bottom:1px solid var(--dsw-alias-border-l1);font-size:12.5px}
-.pb-kvrow:last-child{border-bottom:0}
-.pb-kvrow .pb-k{color:var(--dsw-alias-label-secondary);flex:none}
-.pb-kvrow .pb-v{text-align:right;min-width:0;overflow-wrap:anywhere}
-.pb-filegroup{margin-bottom:12px}
-.pb-filegroup:last-child{margin-bottom:0}
-.pb-filelabel{font-size:11px;color:var(--dsw-alias-label-secondary);margin-bottom:2px}
-.pb-dcols{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:0 30px;align-items:start}
-@media(max-width:820px){.pb-dcols{grid-template-columns:1fr}}
-.pb-colside .pb-sec{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);
-  border-radius:10px;padding:12px 14px}
-.pb-sec+.pb-sec{margin-top:16px}
-.pb-st{display:flex;align-items:center;gap:8px}
-.pb-sec{margin-bottom:18px}
-.pb-sec .pb-st{font-size:11px;color:var(--dsw-alias-label-secondary);letter-spacing:.06em;
-  text-transform:uppercase;margin-bottom:7px}
-.pb-dkv{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:12.5px}
-.pb-dkv .pb-k{color:var(--dsw-alias-label-secondary)}
-.pb-dline{font-size:12.5px;color:var(--dsw-alias-label-secondary);padding:5px 0;
-  border-bottom:1px solid var(--dsw-alias-border-l1);line-height:1.65;overflow-wrap:anywhere}
-.pb-dline:last-child{border-bottom:0}
-.pb-dline b{color:var(--dsw-alias-label-primary)}
-.pb-dline code{background:var(--dsw-alias-bg-layer-2);padding:0 4px;border-radius:3px;font-size:11px;
-  font-family:var(--ds-font-family-code,ui-monospace,monospace)}
-.pb-dline .pb-code{font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:11px}
-.pb-dline .pb-d{font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:10.5px;
-  color:var(--dsw-alias-brand-primary);margin-right:8px}
+.pb-summary-badges{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pb-summary-reason{margin-top:10px;font-size:12.5px;color:var(--dsw-alias-label-secondary);
+  line-height:1.7;padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1)}
+
+/* --- section cards --- */
+.pb-card{background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);
+  border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.pb-card:last-child{margin-bottom:0}
+.pb-card > .pb-st{font-size:11px;color:var(--dsw-alias-label-secondary);letter-spacing:.06em;
+  text-transform:uppercase;font-weight:600;margin-bottom:12px}
+
+/* --- derived facts: label/value rows, never squeezed --- */
+.pb-kvlist{display:flex;flex-direction:column}
+.pb-kvrow{display:flex;align-items:baseline;justify-content:space-between;gap:20px;
+  padding:9px 0;border-bottom:1px solid var(--dsw-alias-border-l1);font-size:12.5px;line-height:1.6}
+.pb-kvrow:first-child{padding-top:0}
+.pb-kvrow:last-child{border-bottom:0;padding-bottom:0}
+.pb-kvrow .pb-k{color:var(--dsw-alias-label-secondary);flex:0 0 auto;white-space:nowrap}
+.pb-kvrow .pb-v{text-align:right;min-width:0;flex:1 1 auto;overflow-wrap:break-word;word-break:break-word}
+
+/* --- files --- */
+.pb-filegroup+.pb-filegroup{margin-top:16px;padding-top:14px;border-top:1px solid var(--dsw-alias-border-l1)}
+.pb-filelabel{font-size:11px;color:var(--dsw-alias-label-secondary);margin-bottom:6px;letter-spacing:.02em}
+.pb-pathrow{display:flex;align-items:flex-start;gap:8px}
+.pb-pathrow+.pb-pathrow{margin-top:6px}
+.pb-pathrow .pb-openrow{flex:1;min-width:0;display:flex;align-items:center;gap:10px;font:inherit;
+  text-align:left;background:var(--dsw-alias-bg-layer-2);border:1px solid transparent;border-radius:8px;
+  color:var(--dsw-alias-label-primary);padding:9px 12px;cursor:pointer;transition:border-color .12s,background .12s}
+.pb-pathrow .pb-openrow:hover{border-color:var(--dsw-alias-brand-primary);
+  background:color-mix(in srgb,var(--dsw-alias-brand-primary) 7%,var(--dsw-alias-bg-layer-2))}
+.pb-pathrow .pb-fname{flex:1;min-width:0;font-size:12px;font-family:var(--ds-font-family-code,ui-monospace,monospace);
+  overflow-wrap:anywhere;word-break:normal;line-height:1.5}
+.pb-pathrow .pb-open{flex:none;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.pb-pathrow .pb-openrow:hover .pb-open{color:var(--dsw-alias-brand-primary)}
+.pb-copy{flex:none;font:inherit;font-size:10.5px;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;
+  background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:6px 8px;cursor:pointer;
+  white-space:nowrap}
+.pb-copy:hover{color:var(--dsw-alias-label-primary)}
+.pb-copy[data-error='true']{color:var(--dsw-alias-state-error-primary)}
+
+/* --- columns --- */
+.pb-dcols{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:start}
+.pb-colmain,.pb-colside{display:flex;flex-direction:column;min-width:0}
+@media(max-width:900px){.pb-dcols{grid-template-columns:1fr}}
+
 .pb-pathrow{display:flex;align-items:center;gap:8px;padding:0;border-bottom:1px solid var(--dsw-alias-border-l1)}
 .pb-pathrow button{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;text-align:left;
   background:none;border:0;color:var(--dsw-alias-label-secondary);padding:7px 0;cursor:pointer}
@@ -549,6 +566,28 @@ window.__ModuleLoader__.load({
 .pb-copy{flex:none;font:inherit;font-size:10.5px;border:1px solid var(--dsw-alias-border-l2);border-radius:5px;
   background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:3px 8px;cursor:pointer}
 .pb-copy[data-error='true']{color:var(--dsw-alias-state-error-primary)}
+/* --- prose: the plan's own words, readable at last --- */
+.pb-prose{display:flex;flex-direction:column;gap:14px}
+.pb-para{margin:0;font-size:13px;line-height:1.85;color:var(--dsw-alias-label-primary);
+  overflow-wrap:break-word;word-break:break-word}
+.pb-para+.pb-para{margin-top:0}
+.pb-prose .pb-para code{background:var(--dsw-alias-bg-layer-2);padding:1px 5px;border-radius:4px;
+  font-size:11.5px;font-family:var(--ds-font-family-code,ui-monospace,monospace)}
+.pb-prose .pb-para a{color:var(--dsw-alias-brand-primary);text-decoration:none}
+.pb-prose .pb-para a:hover{text-decoration:underline}
+.pb-muted{color:var(--dsw-alias-label-secondary);font-size:12.5px}
+
+/* --- progress: a real timeline, not dashed rows --- */
+.pb-timeline{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.pb-tl-item{display:grid;grid-template-columns:96px 1fr;gap:14px;padding:10px 0;
+  border-bottom:1px solid var(--dsw-alias-border-l1);font-size:12.5px;line-height:1.7}
+.pb-tl-item:last-child{border-bottom:0;padding-bottom:0}
+.pb-tl-item:first-child{padding-top:0}
+.pb-tl-date{font-family:var(--ds-font-family-code,ui-monospace,monospace);font-size:11px;
+  color:var(--dsw-alias-brand-primary);white-space:nowrap;padding-top:1px}
+.pb-tl-text{min-width:0;color:var(--dsw-alias-label-primary);overflow-wrap:break-word;word-break:break-word}
+.pb-tl-text code{background:var(--dsw-alias-bg-layer-2);padding:1px 4px;border-radius:3px;font-size:11px}
+@media(max-width:560px){.pb-tl-item{grid-template-columns:1fr;gap:2px}}
 .pb-fileview{display:flex;flex-direction:column;height:100%;min-height:0}
 .pb-filebar{display:flex;align-items:center;gap:10px;padding:4px 0 10px;border-bottom:1px solid var(--dsw-alias-border-l1)}
 .pb-filebar code{flex:1;min-width:0;font-size:11.5px;color:var(--dsw-alias-label-secondary);
@@ -1715,9 +1754,9 @@ window.__ModuleLoader__.load({
 				h('div', { key: 'reason', className: 'pb-summary-reason' }, formatStageReason(detail, tr)),
 			]);
 
-			const derivedCard = h('div', { key: 'derived', className: 'pb-sec' }, [
+			const derivedCard = h('div', { key: 'derived', className: 'pb-card' }, [
 				h('div', { key: 'st', className: 'pb-st' }, tr('panel.derived')),
-				h('div', { key: 'kv', className: 'pb-dkv' }, rows.map(([key, value], index) => h('div', {
+				h('div', { key: 'kv', className: 'pb-kvlist' }, rows.map(([key, value], index) => h('div', {
 					key: `r${index}`, className: 'pb-kvrow',
 				}, [
 					h('span', { key: 'k', className: 'pb-k' }, key),
@@ -1730,7 +1769,7 @@ window.__ModuleLoader__.load({
 				]))),
 			]);
 
-			const filesCard = h('div', { key: 'files', className: 'pb-sec' }, [
+			const filesCard = h('div', { key: 'files', className: 'pb-card' }, [
 				h('div', { key: 'st', className: 'pb-st' }, tr('panel.files')),
 				h('div', { key: 'plan', className: 'pb-filegroup' }, [
 					h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.planFile')),
@@ -1747,35 +1786,33 @@ window.__ModuleLoader__.load({
 					: null,
 			]);
 
-			const leftColumn = [
-				(detail.headerLines ?? []).length > 0
-					? h('div', { key: 'block', className: 'pb-sec' }, [
-						h('div', { key: 'st', className: 'pb-st' }, tr('panel.headerBlock')),
-						...detail.headerLines.map((line, index) => h('div', {
-							key: `l${index}`, className: 'pb-dline',
-						}, inlineMarkdown(line))),
-					])
-					: null,
-				h('div', { key: 'prog', className: 'pb-sec' }, [
-					h('div', { key: 'st', className: 'pb-st' }, tr('panel.recent')),
-					(detail.recentProgress ?? []).length === 0
-						? h('div', { key: 'none', className: 'pb-dline' }, tr('panel.noProgress'))
-						: detail.recentProgress.slice().reverse().map((entry, index) => h('div', {
-							key: `p${index}`, className: 'pb-dline',
-						}, [h('span', { key: 'd', className: 'pb-d' }, entry.date), ...inlineMarkdown(entry.heading)])),
-				]),
-			];
+			const headerCard = (detail.headerLines ?? []).length > 0
+				? h('div', { key: 'block', className: 'pb-card' }, [
+					h('div', { key: 'st', className: 'pb-st' }, tr('panel.headerBlock')),
+					h('div', { key: 'lines', className: 'pb-prose' }, detail.headerLines.map((line, index) => h('p', {
+						key: `l${index}`, className: 'pb-para',
+					}, inlineMarkdown(line)))),
+				])
+				: null;
 
-			const rightColumn = [
-				derivedCard,
-				filesCard,
-			];
+			const progressCard = h('div', { key: 'prog', className: 'pb-card' }, [
+				h('div', { key: 'st', className: 'pb-st' }, tr('panel.recent')),
+				(detail.recentProgress ?? []).length === 0
+					? h('div', { key: 'none', className: 'pb-para pb-muted' }, tr('panel.noProgress'))
+					: h('ol', { key: 'list', className: 'pb-timeline' },
+						detail.recentProgress.slice().reverse().map((entry, index) => h('li', {
+							key: `p${index}`, className: 'pb-tl-item',
+						}, [
+							h('span', { key: 'd', className: 'pb-tl-date' }, entry.date),
+							h('span', { key: 'h', className: 'pb-tl-text' }, inlineMarkdown(entry.heading)),
+						]))),
+			]);
 
 			const detailBody = [
 				summary,
 				h('div', { key: 'cols', className: 'pb-dcols' }, [
-					h('div', { key: 'l', className: 'pb-colmain' }, leftColumn),
-					h('div', { key: 'r', className: 'pb-colside' }, rightColumn),
+					h('div', { key: 'l', className: 'pb-colmain' }, [headerCard, progressCard]),
+					h('div', { key: 'r', className: 'pb-colside' }, [derivedCard, filesCard]),
 				]),
 			];
 			const body = viewing !== null
