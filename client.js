@@ -393,15 +393,24 @@ window.__ModuleLoader__.load({
 .pb-seg{display:inline-flex;align-items:center;background:var(--dsw-alias-bg-layer-2);
   border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:2px;gap:2px}
 .pb-segbtn{font:inherit;font-size:12px;border:0;background:none;color:var(--dsw-alias-label-secondary);
-  padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+  padding:4px 11px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:background .12s,color .12s}
+.pb-segbtn:hover{color:var(--dsw-alias-label-primary)}
 .pb-segbtn[data-on='true']{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);
   box-shadow:0 1px 2px #0000001a}
 .pb-spacer{flex:1}
 .pb-tabs{display:flex;gap:2px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);
-  border-radius:8px;padding:2px}
-.pb-tabs button{font:inherit;font-size:12.5px;border:0;background:none;color:var(--dsw-alias-label-secondary);
-  padding:4px 13px;border-radius:6px;cursor:pointer}
-.pb-tabs button[data-on='true']{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
+  border-radius:9px;padding:3px}
+.pb-tabs button{font:inherit;font-size:12.5px;font-weight:500;border:0;background:none;
+  color:var(--dsw-alias-label-secondary);padding:5px 14px;border-radius:7px;cursor:pointer;
+  white-space:nowrap;transition:background .12s,color .12s}
+.pb-tabs button:hover{color:var(--dsw-alias-label-primary)}
+/* The active tab must be unmistakable. It cannot rely on a "raised surface":
+   in the light theme --dsw-alias-bg-layer-1 and -2 both resolve to #fff, so a
+   layer swap is invisible. A brand tint plus a brand hairline works in both
+   themes without depending on those two tokens differing. */
+.pb-tabs button[data-on='true']{
+  background:var(--dsw-alias-brand-primary);
+  color:var(--dsw-alias-bg-base);font-weight:600}
 .pb-chip{font:inherit;font-size:12px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);
   color:var(--dsw-alias-label-secondary);padding:3px 10px;border-radius:999px;cursor:pointer}
 .pb-chip[data-on='true']{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
@@ -412,9 +421,11 @@ window.__ModuleLoader__.load({
 .pb-root button:focus-visible,.pb-root input:focus-visible,.pb-root select:focus-visible,
 .pb-card:focus-visible,.pb-tl-bar:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:2px}
 .pb-root button:disabled{opacity:.55;cursor:default}
-.pb-ghost{font:inherit;font-size:12.5px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l2);
-  color:var(--dsw-alias-label-secondary);padding:4px 11px;border-radius:7px;cursor:pointer}
-.pb-ghost:hover{color:var(--dsw-alias-label-primary)}
+.pb-ghost{font:inherit;font-size:12.5px;background:none;border:1px solid var(--dsw-alias-border-l2);
+  color:var(--dsw-alias-label-secondary);padding:5px 12px;border-radius:7px;cursor:pointer;white-space:nowrap;
+  transition:background .12s,color .12s,border-color .12s}
+.pb-ghost:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-label-secondary)}
+.pb-ghost:disabled{opacity:.6}
 .pb-main{flex:1;min-height:0;overflow:auto}
 .pb-board{display:flex;gap:11px;padding:13px clamp(12px,2.5cqi,24px) 40px;align-items:flex-start;min-height:100%}
 .pb-col{flex:0 0 250px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l1);
