@@ -606,13 +606,18 @@ window.__ModuleLoader__.load({
 .pb-pathrow .pb-openrow:hover{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,transparent)}
 .pb-pathrow .pb-fname{flex:1;min-width:0;font-size:12px;font-family:var(--ds-font-family-code,ui-monospace,monospace);
   overflow-wrap:anywhere;word-break:normal;line-height:1.5}
-.pb-pathrow .pb-open{flex:none;font-size:11px;color:var(--dsw-alias-label-secondary)}
-.pb-pathrow .pb-openrow:hover .pb-open{color:var(--dsw-alias-brand-primary)}
-.pb-copy{flex:0 0 auto;font:inherit;font-size:11px;border:1px solid var(--dsw-alias-border-l2);border-radius:7px;
-  background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:6px 10px;cursor:pointer;
-  white-space:nowrap}
-.pb-copy:hover{color:var(--dsw-alias-label-primary)}
-.pb-copy[data-error='true']{color:var(--dsw-alias-state-error-primary)}
+.pb-iconbtn{flex:0 0 auto;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
+  background:none;border:1px solid transparent;border-radius:6px;color:var(--dsw-alias-label-secondary);
+  cursor:pointer;padding:0;opacity:0;transition:opacity .12s,background .12s,color .12s}
+/* Reserved, not zero-width: the row must not shift when the icon appears. */
+.pb-pathrow:hover .pb-iconbtn,
+.pb-pathrow:focus-within .pb-iconbtn,
+.pb-iconbtn:focus-visible{opacity:1}
+.pb-iconbtn:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
+.pb-iconbtn[data-error='true']{color:var(--dsw-alias-state-error-primary);opacity:1}
+.pb-pathrow[data-copied='true'] .pb-iconbtn{color:var(--dsw-alias-state-success-primary)}
+/* Touch and narrow screens have no hover: keep the action always visible. */
+@media(hover:none){.pb-iconbtn{opacity:.75}}
 
 /* --- files: one per row, paginated so a long list never floods the page --- */
 .pb-files{display:flex;flex-direction:column}
@@ -629,11 +634,6 @@ window.__ModuleLoader__.load({
 .pb-pathrow button:hover{color:var(--dsw-alias-brand-primary)}
 .pb-pathrow .pb-fname{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px;
   font-family:var(--ds-font-family-code,ui-monospace,monospace)}
-.pb-pathrow .pb-open{flex:none;font-size:10.5px;color:var(--dsw-alias-brand-primary);opacity:0}
-.pb-pathrow button:hover .pb-open{opacity:1}
-.pb-copy{flex:none;font:inherit;font-size:10.5px;border:1px solid var(--dsw-alias-border-l2);border-radius:5px;
-  background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-secondary);padding:3px 8px;cursor:pointer}
-.pb-copy[data-error='true']{color:var(--dsw-alias-state-error-primary)}
 /* --- prose: the plan's own words, readable at last --- */
 .pb-prose{display:flex;flex-direction:column;gap:14px}
 .pb-para{margin:0;font-size:13px;line-height:1.85;color:var(--dsw-alias-label-primary);
@@ -1547,7 +1547,7 @@ window.__ModuleLoader__.load({
 				h('div', { key: 'bar', className: 'pb-filebar' }, [
 					h('code', { key: 'p', title: data.file }, data.file),
 					h('button', {
-						key: 'b', type: 'button', className: 'pb-copy', onClick: onClose,
+						key: 'b', type: 'button', className: 'pb-ghost', onClick: onClose,
 					}, tr('view.backToPlan')),
 				]),
 				data.truncated === true
@@ -1786,22 +1786,49 @@ window.__ModuleLoader__.load({
 			 * One clickable file row: the name opens the viewer, the small button
 			 * copies the path for anyone who wants it in a terminal.
 			 */
-			const pathRow = (path, view) => h('div', { key: path, className: 'pb-pathrow' }, [
-				h('button', {
-					key: 'v', type: 'button', className: 'pb-openrow', title: tr('view.fileOpen'),
-					onClick: () => setViewing(view),
-				}, [
-					h('span', { key: 'n', className: 'pb-fname' }, path.split('/').pop()),
-					h('span', { key: 'o', className: 'pb-open' }, tr('view.file')),
-				]),
-				h('button', {
-					key: 'c', type: 'button', className: 'pb-copy', title: tr('view.copyPath'),
-					onClick: () => copyPath(path),
-					'data-error': String(copyState.error && copyState.path === path),
-				}, copyState.path === path
-					? tr(copyState.error ? 'action.copyFailed' : 'action.copied')
-					: tr('view.copyPath')),
-			]);
+			/**
+			 * One file row.
+			 *
+			 * The row's primary action is "open"; copying the path is secondary and
+			 * appears on hover/focus only. Twenty identical "复制路径" labels made the
+			 * list look like a wall of buttons, and the reserved action column keeps
+			 * the rows from shifting when the affordance appears.
+			 */
+			const pathRow = (path, view) => {
+				const name = path.split('/').pop();
+				const copied = copyState.path === path;
+				const failed = copied && copyState.error;
+				return h('div', { key: path, className: 'pb-pathrow', 'data-copied': String(copied) }, [
+					h('button', {
+						key: 'v', type: 'button', className: 'pb-openrow', title: tr('view.fileOpen'),
+						onClick: () => setViewing(view),
+					}, h('span', { key: 'n', className: 'pb-fname' }, name)),
+					h('button', {
+						key: 'c',
+						type: 'button',
+						className: 'pb-iconbtn',
+						title: failed ? tr('action.copyFailed') : tr('view.copyPath'),
+						'aria-label': failed ? tr('action.copyFailed') : tr('view.copyPath'),
+						'data-error': String(failed),
+						onClick: () => copyPath(path),
+					}, copied && !failed
+						? h('svg', { key: 'ok', viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', 'aria-hidden': true },
+							h('path', {
+								d: 'M3.5 8.5l3 3 6-6.5', stroke: 'currentColor', 'stroke-width': 1.6,
+								'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+							}))
+						: h('svg', { key: 'cp', viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', 'aria-hidden': true }, [
+							h('rect', {
+								key: 'a', x: 5.5, y: 5.5, width: 8, height: 8, rx: 1.6,
+								stroke: 'currentColor', 'stroke-width': 1.3,
+							}),
+							h('path', {
+								key: 'b', d: 'M10.5 5.5v-1a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4.5v4A1.5 1.5 0 0 0 4 10h1',
+								stroke: 'currentColor', 'stroke-width': 1.3, 'stroke-linecap': 'round',
+							}),
+						])),
+				]);
+			};
 			const tone = healthTone(detail.health);
 			const mismatch = detail.headerMismatch === true && typeof detail.headerLag === 'number'
 				? tr(detail.headerLag > 0 ? 'panel.mismatchProgress' : 'panel.mismatchHeader',
