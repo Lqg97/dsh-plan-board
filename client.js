@@ -658,10 +658,10 @@ window.__ModuleLoader__.load({
 
 /* The pager belongs to the list: one closing rule, the count on the left and
    two square buttons on the right, not a stray pair of boxes under row 10. */
-.pb-pager{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;
-  border-top:1px solid var(--dsw-alias-border-l1)}
-.pb-pageinfo{flex:1;font-size:11.5px;color:var(--dsw-alias-label-secondary);
-  font-variant-numeric:tabular-nums}
+.pb-pager{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;
+  padding-top:12px;border-top:1px solid var(--dsw-alias-border-l1)}
+.pb-pageinfo{font-size:11.5px;color:var(--dsw-alias-label-secondary);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
 .pb-pagebtn{flex:0 0 24px;width:24px;height:24px;display:inline-flex;align-items:center;
   justify-content:center;font:inherit;font-size:15px;line-height:1;padding:0;cursor:pointer;
   background:none;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;
