@@ -81,6 +81,8 @@ window.__ModuleLoader__.load({
 			'action.copy': '复制',
 			'action.copied': '已复制',
 			'action.copyFailed': '复制失败',
+			'action.copiedName': '已复制 {name} 的路径',
+			'action.copyFailedName': '无法复制 {name} 的路径',
 			'filter.allRepos': '全部仓',
 			'filter.repo': '仓库',
 			'filter.health': '健康度',
@@ -182,6 +184,8 @@ window.__ModuleLoader__.load({
 			'action.pageInfo': '第 {page}/{total} 页 · {from}–{to}，共 {n} 个',
 			'view.file': '查看',
 			'view.fileOpen': '查看内容',
+			'view.fileOpenName': '查看 {name} 的内容',
+			'view.copyPathName': '复制 {name} 的路径',
 			'view.fileLoading': '读取中…',
 			'view.fileTruncated': '文件较大，仅显示前 {n} KB',
 			'view.copyPath': '复制路径',
@@ -227,6 +231,8 @@ window.__ModuleLoader__.load({
 			'action.pageInfo': 'Page {page}/{total} · {from}–{to} of {n}',
 			'view.file': 'View',
 			'view.fileOpen': 'View content',
+			'view.fileOpenName': 'View the contents of {name}',
+			'view.copyPathName': 'Copy the path of {name}',
 			'view.fileLoading': 'Loading…',
 			'view.fileTruncated': 'Large file; showing the first {n} KB',
 			'view.copyPath': 'Copy path',
@@ -287,6 +293,8 @@ window.__ModuleLoader__.load({
 			'action.copy': 'Copy',
 			'action.copied': 'Copied',
 			'action.copyFailed': 'Copy failed',
+			'action.copiedName': 'Copied the path of {name}',
+			'action.copyFailedName': 'Could not copy the path of {name}',
 			'filter.allRepos': 'All repos',
 			'filter.repo': 'Repository',
 			'filter.health': 'Health',
@@ -596,44 +604,73 @@ window.__ModuleLoader__.load({
 /* --- files --- */
 .pb-filegroup+.pb-filegroup{margin-top:16px;padding-top:14px;border-top:1px solid var(--dsw-alias-border-l1)}
 .pb-filelabel{font-size:11px;color:var(--dsw-alias-label-secondary);margin-bottom:6px;letter-spacing:.02em}
-.pb-pathrow{display:flex;align-items:center;gap:10px;flex-wrap:nowrap;min-width:0;
-  border-bottom:1px solid var(--dsw-alias-border-l1)}
-.pb-pathrow+.pb-pathrow{margin-top:6px}
-.pb-pathrow .pb-openrow{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:10px;font:inherit;
-  text-align:left;background:none;border:0;border-radius:7px;
-  color:var(--dsw-alias-label-primary);padding:9px 10px;margin-left:-10px;cursor:pointer;
-  transition:background .12s}
-.pb-pathrow .pb-openrow:hover{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 8%,transparent)}
-.pb-pathrow .pb-fname{flex:1;min-width:0;font-size:12px;font-family:var(--ds-font-family-code,ui-monospace,monospace);
+
+/* A file row is one interactive unit. The hover tint lives on the row rather
+   than on the filename button, so the name and the copy action read as a single
+   band instead of two ragged halves. The copy button keeps a fixed 26px slot,
+   so revealing it on hover never reflows the name — twenty rows stay aligned. */
+.pb-pathrow{position:relative;display:flex;align-items:center;gap:2px;min-width:0;
+  padding:0 2px 0 0;border-radius:7px;transition:background .12s}
+/* The rule is its own element so the hover radius cannot curl its ends. */
+.pb-pathrow::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--dsw-alias-border-l1)}
+.pb-pathrow:hover{background:color-mix(in srgb,var(--dsw-alias-brand-primary) 6%,transparent)}
+/* The last row in a group closes on the group's own rule, never on two. */
+.pb-pathrow:last-child::after{display:none}
+.pb-pathrow .pb-openrow{flex:1 1 auto;min-width:0;display:flex;align-items:center;font:inherit;
+  text-align:left;background:none;border:0;border-radius:7px 0 0 7px;
+  color:var(--dsw-alias-label-primary);padding:9px 10px;cursor:pointer}
+.pb-pathrow .pb-fname{flex:1;min-width:0;font-size:12px;
+  font-family:var(--ds-font-family-code,ui-monospace,monospace);
   overflow-wrap:anywhere;word-break:normal;line-height:1.5}
-.pb-iconbtn{flex:0 0 auto;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;
-  background:none;border:1px solid transparent;border-radius:6px;color:var(--dsw-alias-label-secondary);
-  cursor:pointer;padding:0;opacity:0;transition:opacity .12s,background .12s,color .12s}
-/* Reserved, not zero-width: the row must not shift when the icon appears. */
+
+/* Secondary action: invisible until the row is hovered or holds focus, but
+   always occupying its slot. Touch devices get it permanently instead. */
+.pb-pathrow .pb-iconbtn{flex:0 0 26px;width:26px;height:26px;display:inline-flex;
+  align-items:center;justify-content:center;padding:0;background:none;
+  border:1px solid transparent;border-radius:6px;color:var(--dsw-alias-label-secondary);
+  cursor:pointer;opacity:0;
+  transition:opacity .12s,background .12s,color .12s,border-color .12s}
 .pb-pathrow:hover .pb-iconbtn,
 .pb-pathrow:focus-within .pb-iconbtn,
-.pb-iconbtn:focus-visible{opacity:1}
-.pb-iconbtn:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
-.pb-iconbtn[data-error='true']{color:var(--dsw-alias-state-error-primary);opacity:1}
-.pb-pathrow[data-copied='true'] .pb-iconbtn{color:var(--dsw-alias-state-success-primary)}
-/* Touch and narrow screens have no hover: keep the action always visible. */
-@media(hover:none){.pb-iconbtn{opacity:.75}}
+.pb-pathrow .pb-iconbtn:focus-visible{opacity:1}
+/* One row is one focus target: the ring is drawn on the row, not on each of the
+   two buttons, so tabbing through the list never shows a seam down the middle. */
+.pb-pathrow:focus-within{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px}
+.pb-pathrow .pb-openrow:focus-visible,
+.pb-pathrow .pb-iconbtn:focus-visible{outline:none}
+.pb-pathrow .pb-iconbtn:hover{background:var(--dsw-alias-bg-layer-1);
+  border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-label-primary)}
+/* A confirmation must outlive the pointer: both states also pin opacity. */
+.pb-pathrow .pb-iconbtn[data-state='ok']{opacity:1;color:var(--dsw-alias-state-success-primary)}
+.pb-pathrow .pb-iconbtn[data-state='error']{opacity:1;color:var(--dsw-alias-state-error-primary)}
+@media(hover:none){.pb-pathrow .pb-iconbtn{opacity:.6}}
 
 /* --- files: one per row, paginated so a long list never floods the page --- */
 .pb-files{display:flex;flex-direction:column}
-.pb-files .pb-pathrow{margin:0;padding:0}
-.pb-files .pb-pathrow+.pb-pathrow{margin-top:2px}
-.pb-files .pb-pathrow .pb-openrow{padding:8px 11px;flex:1 1 auto}
-.pb-files .pb-pathrow .pb-fname{font-size:12px;white-space:normal}
+.pb-files .pb-pathrow+.pb-pathrow{margin-top:1px}
+.pb-files .pb-pathrow .pb-openrow{padding:7px 11px}
 .pb-filescard .pb-filegroup+.pb-filegroup{margin-top:14px;padding-top:12px}
-@media(max-width:900px){}
 
-.pb-pathrow{display:flex;align-items:center;gap:8px;padding:0;border-bottom:1px solid var(--dsw-alias-border-l1)}
-.pb-pathrow button{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font:inherit;text-align:left;
-  background:none;border:0;color:var(--dsw-alias-label-secondary);padding:7px 0;cursor:pointer}
-.pb-pathrow button:hover{color:var(--dsw-alias-brand-primary)}
-.pb-pathrow .pb-fname{flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px;
-  font-family:var(--ds-font-family-code,ui-monospace,monospace)}
+/* The pager belongs to the list: one closing rule, the count on the left and
+   two square buttons on the right, not a stray pair of boxes under row 10. */
+.pb-pager{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:9px;
+  border-top:1px solid var(--dsw-alias-border-l1)}
+.pb-pageinfo{flex:1;font-size:11.5px;color:var(--dsw-alias-label-secondary);
+  font-variant-numeric:tabular-nums}
+.pb-pagebtn{flex:0 0 24px;width:24px;height:24px;display:inline-flex;align-items:center;
+  justify-content:center;font:inherit;font-size:15px;line-height:1;padding:0;cursor:pointer;
+  background:none;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;
+  color:var(--dsw-alias-label-secondary);
+  transition:background .12s,color .12s,border-color .12s}
+.pb-pagebtn:hover:not(:disabled){color:var(--dsw-alias-label-primary);
+  border-color:var(--dsw-alias-label-secondary)}
+.pb-pagebtn:disabled{opacity:.38;cursor:default}
+
+/* Off-screen text for readers that do not see the icon swap. */
+.pb-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
 /* --- prose: the plan's own words, readable at last --- */
 .pb-prose{display:flex;flex-direction:column;gap:14px}
 .pb-para{margin:0;font-size:13px;line-height:1.85;color:var(--dsw-alias-label-primary);
@@ -1783,24 +1820,23 @@ window.__ModuleLoader__.load({
 				}
 			};
 			/**
-			 * One clickable file row: the name opens the viewer, the small button
-			 * copies the path for anyone who wants it in a terminal.
-			 */
-			/**
 			 * One file row.
 			 *
-			 * The row's primary action is "open"; copying the path is secondary and
-			 * appears on hover/focus only. Twenty identical "复制路径" labels made the
-			 * list look like a wall of buttons, and the reserved action column keeps
-			 * the rows from shifting when the affordance appears.
+			 * The row's primary action is "open" (the name); copying the path is
+			 * secondary, so it is an icon in a fixed-width slot at the end of the row
+			 * rather than a text button repeated on every line. The slot is reserved
+			 * even while the icon is invisible, so hover never shifts the name and all
+			 * twenty rows' actions land on the same x.
 			 */
 			const pathRow = (path, view) => {
 				const name = path.split('/').pop();
 				const copied = copyState.path === path;
 				const failed = copied && copyState.error;
-				return h('div', { key: path, className: 'pb-pathrow', 'data-copied': String(copied) }, [
+				const input = { name };
+				return h('div', { key: path, className: 'pb-pathrow' }, [
 					h('button', {
-						key: 'v', type: 'button', className: 'pb-openrow', title: tr('view.fileOpen'),
+						key: 'v', type: 'button', className: 'pb-openrow',
+						title: tr('view.fileOpen'), 'aria-label': tr('view.fileOpenName', input),
 						onClick: () => setViewing(view),
 					}, h('span', { key: 'n', className: 'pb-fname' }, name)),
 					h('button', {
@@ -1808,22 +1844,25 @@ window.__ModuleLoader__.load({
 						type: 'button',
 						className: 'pb-iconbtn',
 						title: failed ? tr('action.copyFailed') : tr('view.copyPath'),
-						'aria-label': failed ? tr('action.copyFailed') : tr('view.copyPath'),
-						'data-error': String(failed),
+						'aria-label': tr('view.copyPathName', input),
+						'data-state': failed ? 'error' : copied ? 'ok' : 'idle',
 						onClick: () => copyPath(path),
 					}, copied && !failed
-						? h('svg', { key: 'ok', viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', 'aria-hidden': true },
-							h('path', {
-								d: 'M3.5 8.5l3 3 6-6.5', stroke: 'currentColor', 'stroke-width': 1.6,
-								'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-							}))
-						: h('svg', { key: 'cp', viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', 'aria-hidden': true }, [
+						? h('svg', {
+							key: 'ok', viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', 'aria-hidden': true,
+						}, h('path', {
+							d: 'M3.6 8.4l2.8 2.8 6-6.4', stroke: 'currentColor', 'stroke-width': 1.7,
+							'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+						}))
+						: h('svg', {
+							key: 'cp', viewBox: '0 0 16 16', width: 14, height: 14, fill: 'none', 'aria-hidden': true,
+						}, [
 							h('rect', {
-								key: 'a', x: 5.5, y: 5.5, width: 8, height: 8, rx: 1.6,
+								key: 'a', x: 5.6, y: 5.6, width: 8, height: 8, rx: 1.8,
 								stroke: 'currentColor', 'stroke-width': 1.3,
 							}),
 							h('path', {
-								key: 'b', d: 'M10.5 5.5v-1a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4.5v4A1.5 1.5 0 0 0 4 10h1',
+								key: 'b', d: 'M10.4 5.6V4.4a1.6 1.6 0 0 0-1.6-1.6H4.4A1.6 1.6 0 0 0 2.8 4.4v4.4A1.6 1.6 0 0 0 4.4 10.4h1.2',
 								stroke: 'currentColor', 'stroke-width': 1.3, 'stroke-linecap': 'round',
 							}),
 						])),
@@ -1908,6 +1947,15 @@ window.__ModuleLoader__.load({
 			const pageItems = window_.items.map((index) => evidence[index]);
 			const filesCard = h('div', { key: 'files', className: 'pb-card pb-filescard' }, [
 				h('div', { key: 'st', className: 'pb-st' }, tr('panel.files')),
+				// The icon swap from clipboard to tick is invisible to assistive tech,
+				// so the outcome is announced here instead.
+				h('span', {
+					key: 'live', className: 'pb-sr', role: 'status', 'aria-live': 'polite',
+				}, copyState.path === null
+					? ''
+					: tr(copyState.error ? 'action.copyFailedName' : 'action.copiedName', {
+						name: String(copyState.path).split('/').pop(),
+					})),
 				h('div', { key: 'plan', className: 'pb-filegroup' }, [
 					h('div', { key: 'l', className: 'pb-filelabel' }, tr('panel.planFile')),
 					pathRow(planPath, { kind: 'plan', name: detail.file }),
@@ -1924,7 +1972,7 @@ window.__ModuleLoader__.load({
 								h('button', {
 									key: 'prev', type: 'button', className: 'pb-pagebtn',
 									disabled: window_.page === 0,
-									'onClick': () => setEvidencePage(page - 1),
+									'onClick': () => setEvidencePage(window_.page - 1),
 									'aria-label': tr('action.prevPage'),
 								}, '‹'),
 								h('span', { key: 'info', className: 'pb-pageinfo' },
@@ -1938,7 +1986,7 @@ window.__ModuleLoader__.load({
 								h('button', {
 									key: 'next', type: 'button', className: 'pb-pagebtn',
 									disabled: window_.page >= window_.pages - 1,
-									'onClick': () => setEvidencePage(page + 1),
+									'onClick': () => setEvidencePage(window_.page + 1),
 									'aria-label': tr('action.nextPage'),
 								}, '›'),
 							])
