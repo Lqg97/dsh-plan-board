@@ -82,6 +82,8 @@ window.__ModuleLoader__.load({
 			'action.copied': '已复制',
 			'action.copyFailed': '复制失败',
 			'filter.allRepos': '全部仓',
+			'filter.repo': '仓库',
+			'filter.health': '健康度',
 			'filter.hasMr': '有 MR',
 			'filter.mismatch': '状态未对齐 {n}',
 			'filter.stalled': '停滞',
@@ -280,6 +282,8 @@ window.__ModuleLoader__.load({
 			'action.copied': 'Copied',
 			'action.copyFailed': 'Copy failed',
 			'filter.allRepos': 'All repos',
+			'filter.repo': 'Repository',
+			'filter.health': 'Health',
 			'filter.hasMr': 'Has MR',
 			'filter.mismatch': 'Out of sync {n}',
 			'filter.stalled': 'Stalled',
@@ -373,19 +377,31 @@ window.__ModuleLoader__.load({
 .pb-root{box-sizing:border-box;display:flex;flex-direction:column;height:100%;min-height:0;width:100%;
   background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-size:13.5px;line-height:1.6;
   container-type:inline-size}
-.pb-head{flex:none;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+.pb-head{flex:none;display:flex;flex-direction:column;gap:12px;
   padding:12px clamp(12px,2.5cqi,24px);border-bottom:1px solid var(--dsw-alias-border-l1)}
-.pb-title{font-size:15px;font-weight:650;margin:0}
-.pb-sub{color:var(--dsw-alias-label-secondary);font-size:11.5px;margin-left:8px}
-.pb-counts{display:flex;gap:13px;font-size:12px;color:var(--dsw-alias-label-secondary)}
-.pb-counts b{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums}
+.pb-headbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-width:0}
+.pb-titlewrap{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}
+.pb-title{font-size:15px;font-weight:650;margin:0;white-space:nowrap}
+.pb-counts{display:flex;gap:12px;font-size:12px;color:var(--dsw-alias-label-secondary);flex-wrap:wrap}
+.pb-counts b{color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;font-weight:600}
+.pb-countmatch b{color:var(--dsw-alias-brand-primary)}
+.pb-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pb-filterbar{display:flex;flex-direction:column;gap:8px}
+.pb-frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.pb-reposel{max-width:230px}
+.pb-searchbox{flex:1 1 260px;min-width:180px;max-width:420px}
+.pb-seg{display:inline-flex;align-items:center;background:var(--dsw-alias-bg-layer-2);
+  border:1px solid var(--dsw-alias-border-l2);border-radius:8px;padding:2px;gap:2px}
+.pb-segbtn{font:inherit;font-size:12px;border:0;background:none;color:var(--dsw-alias-label-secondary);
+  padding:3px 10px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.pb-segbtn[data-on='true']{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);
+  box-shadow:0 1px 2px #0000001a}
 .pb-spacer{flex:1}
 .pb-tabs{display:flex;gap:2px;background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);
   border-radius:8px;padding:2px}
 .pb-tabs button{font:inherit;font-size:12.5px;border:0;background:none;color:var(--dsw-alias-label-secondary);
   padding:4px 13px;border-radius:6px;cursor:pointer}
 .pb-tabs button[data-on='true']{background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary)}
-.pb-filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .pb-chip{font:inherit;font-size:12px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);
   color:var(--dsw-alias-label-secondary);padding:3px 10px;border-radius:999px;cursor:pointer}
 .pb-chip[data-on='true']{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
@@ -2077,129 +2093,145 @@ window.__ModuleLoader__.load({
 				setArchivedShowAll(false);
 			}, []);
 
+			const healthLevels = ['error', 'warn', 'ok'];
+			const repoLabel = (entry) => {
+				// Colliding last segments are the reason chips read as duplicates:
+				// show the shortest suffix that is unique among the candidates.
+				const parts = entry.split('/');
+				for (let take = 1; take <= parts.length; take += 1) {
+					const candidate = parts.slice(-take).join('/');
+					const hits = repos.filter((other) => other === entry
+						? other.split('/').slice(-take).join('/') === candidate
+						: other.endsWith(`/${candidate}`) || other === candidate);
+					if (hits.length === 1) return candidate;
+				}
+				return entry;
+			};
+
 			const header = h('div', { key: 'head', className: 'pb-head' }, [
-				h('div', { key: 'title' }, [
-					h('h2', { key: 't', className: 'pb-title' }, tr('title')),
-					h('span', { key: 's', className: 'pb-sub' }, tr('subtitle')),
-				]),
-				board !== null
-					? h('div', { key: 'counts', className: 'pb-counts' }, [
-						h('span', { key: 'l' }, [tr('count.live'), ' ', h('b', { key: 'b' }, board.counts.live)]),
-						h('span', { key: 'a' }, [tr('count.archived'), ' ', h('b', { key: 'b' }, board.counts.archived)]),
-						h('span', { key: 't' }, [tr('count.today'), ' ', h('b', { key: 'b' }, board.counts.progressedToday)]),
-						hasFilters && view === 'board'
-							? h('span', { key: 'm' }, h('b', tr('count.matches', { shown: visibleCards.length, total: board.cards.length })))
+				h('div', { key: 'bar', className: 'pb-headbar' }, [
+					h('div', { key: 'title', className: 'pb-titlewrap' }, [
+						h('h2', { key: 't', className: 'pb-title' }, tr('title')),
+						board !== null
+							? h('div', { key: 'counts', className: 'pb-counts' }, [
+								h('span', { key: 'l' }, [tr('count.live'), ' ', h('b', { key: 'b' }, board.counts.live)]),
+								h('span', { key: 'a' }, [tr('count.archived'), ' ', h('b', { key: 'b' }, board.counts.archived)]),
+								h('span', { key: 't' }, [tr('count.today'), ' ', h('b', { key: 'b' }, board.counts.progressedToday)]),
+								hasFilters && view === 'board'
+									? h('span', { key: 'm', className: 'pb-countmatch' },
+										tr('count.matches', { shown: visibleCards.length, total: board.cards.length }))
+									: null,
+							])
 							: null,
-					])
-					: null,
-				h('div', { key: 'spacer', className: 'pb-spacer' }),
-				(workspaces ?? []).length > 1
-					? h('select', {
-						key: 'ws',
-						className: 'pb-select',
-						value: workspace,
-						title: tr('subtitle'),
-						'aria-label': tr('filter.workspace'),
-						onChange: (event) => {
-							const chosen = event.target.value;
-							// Only an explicit pick is remembered; an auto-pick must never
-							// outlive the reason it was chosen.
-							try {
-								window.localStorage.setItem(STORE_KEY, chosen);
-							} catch {
-								// Private mode: the choice just does not persist.
-							}
-							detailRequest.current += 1;
-							setDetail(null);
-							setBoard(null);
-							setCadence(null);
-							setError(null);
-							setRepo('');
-							setArchivedShowAll(false);
-							setRefreshing(false);
-							setWorkspace(chosen);
-						},
-					}, workspaces.map((item) => h('option', {
-						key: item.path,
-						value: item.path,
-						// Show the plan count so an empty board is explained by the
-						// picker itself instead of by a blank page.
-					}, `${item.title ?? item.path}（${item.live ?? 0}+${item.archived ?? 0}）`)))
-					: null,
-				h('div', { key: 'tabs', className: 'pb-tabs', role: 'tablist' }, [
-					h('button', {
-						key: 'b', type: 'button', role: 'tab', 'aria-selected': view === 'board',
-						'data-on': String(view === 'board'), onClick: () => setView('board'),
-					}, tr('view.board')),
-					h('button', {
-						key: 't', type: 'button', role: 'tab', 'aria-selected': view === 'timeline',
-						'data-on': String(view === 'timeline'), onClick: () => setView('timeline'),
-					}, tr('view.timeline')),
-					h('button', {
-						key: 'c', type: 'button', role: 'tab', 'aria-selected': view === 'cadence',
-						'data-on': String(view === 'cadence'), onClick: () => setView('cadence'),
-					}, tr('view.cadence')),
-					h('button', {
-						key: 'k', type: 'button', role: 'tab', 'aria-selected': view === 'talk',
-						'data-on': String(view === 'talk'), onClick: () => setView('talk'),
-					}, tr('view.talk')),
+					]),
+					h('div', { key: 'spacer', className: 'pb-spacer' }),
+					h('div', { key: 'tools', className: 'pb-tools' }, [
+						(workspaces ?? []).length > 1
+							? h('select', {
+								key: 'ws',
+								className: 'pb-select',
+								value: workspace,
+								title: tr('filter.workspace'),
+								'aria-label': tr('filter.workspace'),
+								onChange: (event) => {
+									const chosen = event.target.value;
+									// Only an explicit pick is remembered; an auto-pick must
+									// never outlive the reason it was chosen.
+									try {
+										window.localStorage.setItem(STORE_KEY, chosen);
+									} catch {
+										// Private mode: the choice just does not persist.
+									}
+									detailRequest.current += 1;
+									setDetail(null);
+									setBoard(null);
+									setCadence(null);
+									setError(null);
+									setRepo('');
+									setArchivedShowAll(false);
+									setRefreshing(false);
+									setWorkspace(chosen);
+								},
+							}, workspaces.map((item) => h('option', {
+								key: item.path,
+								value: item.path,
+							}, `${item.title ?? item.path}（${item.live ?? 0}+${item.archived ?? 0}）`)))
+							: null,
+						h('div', { key: 'tabs', className: 'pb-tabs', role: 'tablist' }, [
+							...[
+								['board', 'view.board'],
+								['timeline', 'view.timeline'],
+								['cadence', 'view.cadence'],
+								['talk', 'view.talk'],
+							].map(([key, label]) => h('button', {
+								key, type: 'button', role: 'tab', 'aria-selected': view === key,
+								'data-on': String(view === key), onClick: () => setView(key),
+							}, tr(label))),
+						]),
+						h('button', {
+							key: 'reload', type: 'button', className: 'pb-ghost', disabled: refreshing,
+							title: tr('action.refresh'),
+							onClick: () => {
+								setRefreshing(true);
+								setReloadKey((value) => value + 1);
+							},
+						}, tr(refreshing ? 'action.refreshing' : 'action.refresh')),
+					]),
 				]),
 				view === 'board'
-					? h('div', { key: 'filters', className: 'pb-filters' }, [
-						h('button', {
-							key: 'all', type: 'button', className: 'pb-chip', 'data-on': String(activeRepo === ''),
-							'aria-pressed': activeRepo === '', onClick: () => setRepo(''),
-						}, tr('filter.allRepos')),
-						...repos.map((entry) => h('button', {
-							key: entry,
-							type: 'button',
-							className: 'pb-chip',
-							'data-on': String(activeRepo === entry),
-							'aria-pressed': activeRepo === entry,
-							onClick: () => setRepo(activeRepo === entry ? '' : entry),
-						}, entry.split('/').pop())),
-						...['error', 'warn', 'ok'].map((level) => h('button', {
-							key: level,
-							type: 'button',
-							className: 'pb-chip',
-							'data-on': String(health === level),
-							'aria-pressed': health === level,
-							onClick: () => setHealth(health === level ? '' : level),
-						}, tr(`filter.${level === 'error' ? 'stalled' : level === 'warn' ? 'warning' : 'ok'}`))),
-						h('button', {
-							key: 'mr', type: 'button', className: 'pb-chip', 'data-on': String(hasMr),
-							'aria-pressed': hasMr, onClick: () => setHasMr(!hasMr),
-						}, tr('filter.hasMr')),
-						h('button', {
-							key: 'mismatch', type: 'button', className: 'pb-chip', 'data-on': String(mismatchOnly),
-							'aria-pressed': mismatchOnly, onClick: () => setMismatchOnly(!mismatchOnly),
-						}, tr('filter.mismatch', { n: board?.counts.mismatched ?? 0 })),
-						h('select', {
-							key: 'sort', className: 'pb-select', value: sort, title: tr('sort.title'),
-							'aria-label': tr('sort.title'), onChange: (event) => setSort(event.target.value),
-						}, [
-							h('option', { key: 'updated', value: 'updated' }, tr('sort.updated')),
-							h('option', { key: 'stalled', value: 'stalled' }, tr('sort.stalled')),
-							h('option', { key: 'title', value: 'title' }, tr('sort.planTitle')),
+					? h('div', { key: 'filters', className: 'pb-filterbar' }, [
+						h('div', { key: 'row1', className: 'pb-frow' }, [
+							h('select', {
+								key: 'repo',
+								className: 'pb-select pb-reposel',
+								value: activeRepo,
+								'aria-label': tr('filter.repo'),
+								title: tr('filter.repo'),
+								onChange: (event) => setRepo(event.target.value),
+							}, [
+								h('option', { key: 'all', value: '' }, tr('filter.allRepos')),
+								...repos.map((entry) => h('option', { key: entry, value: entry }, repoLabel(entry))),
+							]),
+							h('div', { key: 'health', className: 'pb-seg', role: 'group', 'aria-label': tr('filter.health') },
+								healthLevels.map((level) => h('button', {
+									key: level,
+									type: 'button',
+									className: 'pb-segbtn',
+									'data-on': String(health === level),
+									'aria-pressed': health === level,
+									onClick: () => setHealth(health === level ? '' : level),
+								}, tr(`filter.${level === 'error' ? 'stalled' : level === 'warn' ? 'warning' : 'ok'}`)))),
+							h('button', {
+								key: 'mr', type: 'button', className: 'pb-chip', 'data-on': String(hasMr),
+								'aria-pressed': hasMr, onClick: () => setHasMr(!hasMr),
+							}, tr('filter.hasMr')),
+							h('button', {
+								key: 'mismatch', type: 'button', className: 'pb-chip', 'data-on': String(mismatchOnly),
+								'aria-pressed': mismatchOnly, onClick: () => setMismatchOnly(!mismatchOnly),
+							}, tr('filter.mismatch', { n: board?.counts.mismatched ?? 0 })),
 						]),
-						h('input', {
-							key: 'q', className: 'pb-input', placeholder: tr('filter.search'),
-							'aria-label': tr('filter.search'), value: query, spellCheck: false,
-							onChange: (event) => setQuery(event.target.value),
-						}),
-						hasFilters
-							? h('button', { key: 'clear', type: 'button', className: 'pb-chip', onClick: clearFilters },
-								tr('action.clearFilters'))
-							: null,
+						h('div', { key: 'row2', className: 'pb-frow' }, [
+							h('input', {
+								key: 'q', className: 'pb-input pb-searchbox', placeholder: tr('filter.search'),
+								'aria-label': tr('filter.search'), value: query, spellCheck: false,
+								onChange: (event) => setQuery(event.target.value),
+							}),
+							h('select', {
+								key: 'sort', className: 'pb-select', value: sort, title: tr('sort.title'),
+								'aria-label': tr('sort.title'), onChange: (event) => setSort(event.target.value),
+							}, [
+								h('option', { key: 'updated', value: 'updated' }, tr('sort.updated')),
+								h('option', { key: 'stalled', value: 'stalled' }, tr('sort.stalled')),
+								h('option', { key: 'title', value: 'title' }, tr('sort.planTitle')),
+							]),
+							h('div', { key: 'spacer', className: 'pb-spacer' }),
+							hasFilters
+								? h('button', { key: 'clear', type: 'button', className: 'pb-chip', onClick: clearFilters },
+									tr('action.clearFilters'))
+								: null,
+						]),
 					])
 					: null,
-				h('button', {
-					key: 'reload', type: 'button', className: 'pb-ghost', disabled: refreshing,
-					onClick: () => {
-						setRefreshing(true);
-						setReloadKey((value) => value + 1);
-					},
-				}, tr(refreshing ? 'action.refreshing' : 'action.refresh')),
 			]);
 
 			const body = error !== null
